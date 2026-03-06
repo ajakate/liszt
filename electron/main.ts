@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron';
 import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
@@ -7,10 +7,13 @@ import { analyzeBook, generateStyleProfile, estimateCost, DEFAULT_MODEL, AVAILAB
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     title: 'Liszt',
+    icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -26,6 +29,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
+  app.dock?.setIcon(nativeImage.createFromPath(iconPath));
   initDatabase();
   createWindow();
   registerIpcHandlers();
