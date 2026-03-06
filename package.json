@@ -33,12 +33,17 @@
     "appId": "com.liszt.app",
     "productName": "Liszt",
     "files": [
-      "dist/**/*",
+      "dist-renderer/**/*",
       "dist-electron/**/*",
       "assets/**/*"
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        }
+      ],
       "icon": "assets/icon.icns"
     }
   }
