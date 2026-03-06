@@ -27,4 +27,8 @@ contextBridge.exposeInMainWorld('api', {
   generateStyleProfile: (bookId: number) => ipcRenderer.invoke('style:generate', bookId),
   getStyleProfile: (bookId: number) => ipcRenderer.invoke('style:getProfile', bookId),
   getAllStyleProfiles: () => ipcRenderer.invoke('style:getAllProfiles'),
+
+  // Usage
+  getTotalCost: () => ipcRenderer.invoke('usage:getTotalCost'),
+  estimateCost: (bookId: number) => ipcRenderer.invoke('usage:estimateCost', bookId),
 });

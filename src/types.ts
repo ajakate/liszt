@@ -4,6 +4,7 @@ export interface Book {
   author: string;
   file_path: string;
   text_preview: string;
+  word_count: number;
   created_at: string;
 }
 
@@ -19,6 +20,13 @@ export interface AnalysisResult {
   question: string;
   answer: string;
   created_at: string;
+}
+
+export interface UsageInfo {
+  input_tokens: number;
+  output_tokens: number;
+  cost: number;
+  model: string;
 }
 
 export interface StyleScores {
@@ -62,11 +70,13 @@ declare global {
       getBooks: () => Promise<Book[]>;
       getBook: (id: number) => Promise<Book>;
       deleteBook: (id: number) => Promise<void>;
-      runAnalysis: (bookId: number) => Promise<AnalysisResult[]>;
+      runAnalysis: (bookId: number) => Promise<{ results: AnalysisResult[]; usage: UsageInfo }>;
       getAnalysisResults: (bookId: number) => Promise<AnalysisResult[]>;
-      generateStyleProfile: (bookId: number) => Promise<StyleProfile>;
+      generateStyleProfile: (bookId: number) => Promise<StyleProfile & { usage: UsageInfo }>;
       getStyleProfile: (bookId: number) => Promise<StyleProfile | null>;
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
+      getTotalCost: () => Promise<number>;
+      estimateCost: (bookId: number) => Promise<number>;
     };
   }
 }

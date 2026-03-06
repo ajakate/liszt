@@ -5,12 +5,14 @@ export default function Settings() {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [models, setModels] = useState<ModelOption[]>([]);
+  const [totalCost, setTotalCost] = useState(0);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     window.api?.getApiKey().then(setApiKey).catch(console.error);
     window.api?.getModel().then(setModel).catch(console.error);
     window.api?.getAvailableModels().then(setModels).catch(console.error);
+    window.api?.getTotalCost().then(setTotalCost).catch(console.error);
   }, []);
 
   async function handleSaveKey() {
@@ -27,6 +29,14 @@ export default function Settings() {
   return (
     <div>
       <h2>Settings</h2>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>API Usage</h3>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#e94560' }}>
+          ${totalCost.toFixed(4)}
+        </div>
+        <div style={{ color: '#888', fontSize: 13 }}>Total spent via Liszt</div>
+      </div>
 
       <div className="card">
         <h3>Claude API Key</h3>

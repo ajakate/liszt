@@ -48,7 +48,25 @@ export function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (book_id) REFERENCES books(id)
     );
+
+    CREATE TABLE IF NOT EXISTS usage_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id INTEGER,
+      operation TEXT NOT NULL,
+      model TEXT NOT NULL,
+      input_tokens INTEGER NOT NULL,
+      output_tokens INTEGER NOT NULL,
+      cost REAL NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (book_id) REFERENCES books(id)
+    );
   `);
+
+  // Migrations for existing databases
+  const columns = db.pragma('table_info(books)') as any[];
+  if (!columns.find((c: any) => c.name === 'word_count')) {
+    db.exec('ALTER TABLE books ADD COLUMN word_count INTEGER DEFAULT 0');
+  }
 }
 
 export function getDatabase() {

@@ -8,14 +8,50 @@ export const AVAILABLE_MODELS = [
   { id: 'claude-opus-4-20250514', name: 'Opus 4 (most capable, expensive)' },
 ];
 
+// Cost per million tokens
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00 },
+  'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
+  'claude-opus-4-20250514': { input: 15.00, output: 75.00 },
+};
+
+export interface UsageInfo {
+  input_tokens: number;
+  output_tokens: number;
+  cost: number;
+  model: string;
+}
+
 interface AnalysisResult {
   question: string;
   answer: string;
 }
 
+interface AnalysisResponse {
+  results: AnalysisResult[];
+  usage: UsageInfo;
+}
+
 interface StyleProfile {
   scores: Record<string, number>;
   description: string;
+}
+
+interface StyleProfileResponse {
+  profile: StyleProfile;
+  usage: UsageInfo;
+}
+
+function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING[DEFAULT_MODEL];
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
+export function estimateCost(model: string, textLength: number): number {
+  // Rough estimate: ~4 chars per token for English text, plus prompt overhead
+  const estimatedInputTokens = Math.ceil(textLength / 4) + 500;
+  const estimatedOutputTokens = 1000;
+  return calculateCost(model, estimatedInputTokens, estimatedOutputTokens);
 }
 
 export async function analyzeBook(
@@ -25,7 +61,7 @@ export async function analyzeBook(
   author: string,
   text: string,
   questions: string[]
-): Promise<AnalysisResult[]> {
+): Promise<AnalysisResponse> {
   const client = new Anthropic({ apiKey });
 
   const questionsFormatted = questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
@@ -59,7 +95,17 @@ ${text}`,
     jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }
 
-  return JSON.parse(jsonText);
+  const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
+
+  return {
+    results: JSON.parse(jsonText),
+    usage: {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      cost,
+      model,
+    },
+  };
 }
 
 export async function generateStyleProfile(
@@ -68,7 +114,7 @@ export async function generateStyleProfile(
   title: string,
   author: string,
   text: string
-): Promise<StyleProfile> {
+): Promise<StyleProfileResponse> {
   const client = new Anthropic({ apiKey });
 
   const response = await client.messages.create({
@@ -117,5 +163,15 @@ ${text}`,
     jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }
 
-  return JSON.parse(jsonText);
+  const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
+
+  return {
+    profile: JSON.parse(jsonText),
+    usage: {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      cost,
+      model,
+    },
+  };
 }

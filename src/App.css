@@ -304,3 +304,15 @@ input[type="password"]:focus {
   color: #888;
   font-size: 13px;
 }
+
+.cost-badge {
+  color: #888;
+  font-size: 13px;
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: inline-block;
+  margin-right: 8px;
+  margin-bottom: 16px;
+}

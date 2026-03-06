@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile } from '../types';
+import { Book, AnalysisResult, StyleProfile, UsageInfo } from '../types';
 import StyleBars from '../components/StyleBars';
+
+function formatCost(cost: number): string {
+  if (cost < 0.01) return `<$0.01`;
+  return `$${cost.toFixed(2)}`;
+}
+
+function formatPageCount(wordCount: number): string {
+  return `~${Math.round(wordCount / 250)} pages`;
+}
 
 export default function BookDetail() {
   const { id } = useParams<{ id: string }>();
@@ -14,28 +23,34 @@ export default function BookDetail() {
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingStyle, setGeneratingStyle] = useState(false);
   const [error, setError] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
+  const [lastAnalysisCost, setLastAnalysisCost] = useState<UsageInfo | null>(null);
+  const [lastStyleCost, setLastStyleCost] = useState<UsageInfo | null>(null);
 
   useEffect(() => {
     loadData();
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
+      window.api.estimateCost(bookId),
     ]);
     setBook(bookData);
     setResults(analysisData);
     setStyleProfile(styleData);
+    setEstimatedCost(estimate);
   }
 
   async function handleAnalyze() {
     setAnalyzing(true);
     setError('');
     try {
-      const newResults = await window.api.runAnalysis(bookId);
+      const { results: newResults, usage } = await window.api.runAnalysis(bookId);
       setResults(newResults);
+      setLastAnalysisCost(usage);
     } catch (e: any) {
       setError(e.message || 'Analysis failed');
     } finally {
@@ -47,8 +62,9 @@ export default function BookDetail() {
     setGeneratingStyle(true);
     setError('');
     try {
-      const profile = await window.api.generateStyleProfile(bookId);
-      setStyleProfile(profile);
+      const result = await window.api.generateStyleProfile(bookId);
+      setStyleProfile(result);
+      setLastStyleCost(result.usage);
     } catch (e: any) {
       setError(e.message || 'Style analysis failed');
     } finally {
@@ -70,9 +86,18 @@ export default function BookDetail() {
       <Link to="/" className="back-link">Back to Library</Link>
 
       <h2>{book.title}</h2>
-      <p style={{ color: '#888', marginBottom: 20 }}>{book.author}</p>
+      <p style={{ color: '#888', marginBottom: 4 }}>{book.author}</p>
+      <p style={{ color: '#666', marginBottom: 20, fontSize: 13 }}>
+        {book.word_count?.toLocaleString()} words ({formatPageCount(book.word_count || 0)})
+      </p>
 
       {error && <div className="error">{error}</div>}
+
+      {estimatedCost !== null && (
+        <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
+          Estimated cost per analysis: {formatCost(estimatedCost)}
+        </p>
+      )}
 
       <div className="actions">
         <button onClick={handleAnalyze} disabled={analyzing}>
@@ -83,6 +108,18 @@ export default function BookDetail() {
         </button>
         <button onClick={handleDelete} className="danger">Delete</button>
       </div>
+
+      {lastAnalysisCost && (
+        <div className="cost-badge">
+          Analysis cost: {formatCost(lastAnalysisCost.cost)} ({lastAnalysisCost.input_tokens.toLocaleString()} in / {lastAnalysisCost.output_tokens.toLocaleString()} out tokens)
+        </div>
+      )}
+
+      {lastStyleCost && (
+        <div className="cost-badge">
+          Style profile cost: {formatCost(lastStyleCost.cost)} ({lastStyleCost.input_tokens.toLocaleString()} in / {lastStyleCost.output_tokens.toLocaleString()} out tokens)
+        </div>
+      )}
 
       {results.length > 0 && (
         <div className="section">

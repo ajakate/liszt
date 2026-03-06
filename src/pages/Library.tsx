@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Book } from '../types';
 
+function formatPageCount(wordCount: number): string {
+  const pages = Math.round(wordCount / 250);
+  return `~${pages} pages`;
+}
+
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +52,9 @@ export default function Library() {
             <div key={book.id} className="card book-card" onClick={() => navigate(`/book/${book.id}`)}>
               <h3>{book.title}</h3>
               <div className="author">{book.author}</div>
+              <div style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>
+                {book.word_count?.toLocaleString()} words ({formatPageCount(book.word_count || 0)})
+              </div>
               <div className="preview">{book.text_preview?.substring(0, 150)}...</div>
             </div>
           ))}

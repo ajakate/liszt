@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
-import { analyzeBook, generateStyleProfile, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
+import { analyzeBook, generateStyleProfile, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -90,10 +90,11 @@ function registerIpcHandlers() {
 
     // Store a truncated version of the text for the DB (full text can be very large)
     const textPreview = text.substring(0, 5000);
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
 
     const insertResult = db.prepare(
-      'INSERT INTO books (title, author, file_path, text_content, text_preview) VALUES (?, ?, ?, ?, ?)'
-    ).run(metadata.title, metadata.author, filePath, text, textPreview);
+      'INSERT INTO books (title, author, file_path, text_content, text_preview, word_count) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(metadata.title, metadata.author, filePath, text, textPreview, wordCount);
 
     return {
       id: insertResult.lastInsertRowid,
@@ -101,15 +102,16 @@ function registerIpcHandlers() {
       author: metadata.author,
       file_path: filePath,
       text_preview: textPreview,
+      word_count: wordCount,
     };
   });
 
   ipcMain.handle('books:getAll', () => {
-    return db.prepare('SELECT id, title, author, file_path, text_preview, created_at FROM books ORDER BY created_at DESC').all();
+    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, created_at FROM books ORDER BY created_at DESC').all();
   });
 
   ipcMain.handle('books:get', (_event, id: number) => {
-    return db.prepare('SELECT id, title, author, file_path, text_preview, created_at FROM books WHERE id = ?').get(id);
+    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, created_at FROM books WHERE id = ?').get(id);
   });
 
   ipcMain.handle('books:delete', (_event, id: number) => {
@@ -135,7 +137,7 @@ function registerIpcHandlers() {
     // Use first ~100k chars of text (Claude context limit consideration)
     const textSample = book.text_content.substring(0, 100000);
 
-    const results = await analyzeBook(apiKey, model, book.title, book.author, textSample, questions);
+    const { results, usage } = await analyzeBook(apiKey, model, book.title, book.author, textSample, questions);
 
     // Clear old results for this book
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(bookId);
@@ -146,7 +148,12 @@ function registerIpcHandlers() {
       insert.run(bookId, result.question, result.answer);
     }
 
-    return results;
+    // Log usage
+    db.prepare('INSERT INTO usage_log (book_id, operation, model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?, ?, ?)').run(
+      bookId, 'analysis', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
+    );
+
+    return { results, usage };
   });
 
   ipcMain.handle('analysis:getResults', (_event, bookId: number) => {
@@ -164,7 +171,7 @@ function registerIpcHandlers() {
     const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
     const textSample = book.text_content.substring(0, 100000);
 
-    const profile = await generateStyleProfile(apiKey, model, book.title, book.author, textSample);
+    const { profile, usage } = await generateStyleProfile(apiKey, model, book.title, book.author, textSample);
 
     db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
       bookId,
@@ -172,7 +179,12 @@ function registerIpcHandlers() {
       profile.description
     );
 
-    return profile;
+    // Log usage
+    db.prepare('INSERT INTO usage_log (book_id, operation, model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?, ?, ?)').run(
+      bookId, 'style_profile', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
+    );
+
+    return { ...profile, usage };
   });
 
   ipcMain.handle('style:getProfile', (_event, bookId: number) => {
@@ -196,5 +208,19 @@ function registerIpcHandlers() {
       scores: JSON.parse(row.profile_json),
       description: row.description,
     }));
+  });
+
+  // Usage / cost tracking
+  ipcMain.handle('usage:getTotalCost', () => {
+    const row = db.prepare('SELECT COALESCE(SUM(cost), 0) as total FROM usage_log').get() as any;
+    return row.total;
+  });
+
+  ipcMain.handle('usage:estimateCost', (_event, bookId: number) => {
+    const book = db.prepare('SELECT text_content FROM books WHERE id = ?').get(bookId) as any;
+    if (!book) return 0;
+    const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
+    const textLength = Math.min(book.text_content.length, 100000);
+    return estimateCost(model, textLength);
   });
 }
