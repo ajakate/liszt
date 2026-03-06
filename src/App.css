@@ -1,0 +1,306 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: #16213e;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid #0f3460;
+}
+
+.app-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e94560;
+  margin-bottom: 24px;
+  padding-left: 12px;
+}
+
+.sidebar a {
+  color: #a0a0b8;
+  text-decoration: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.sidebar a:hover {
+  background: #1a1a3e;
+  color: #e0e0e0;
+}
+
+.sidebar a.active {
+  background: #0f3460;
+  color: #e94560;
+  font-weight: 600;
+}
+
+.content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #f0f0f0;
+}
+
+h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #d0d0e0;
+}
+
+button {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #c73650;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #0f3460;
+}
+
+button.secondary:hover {
+  background: #1a4a7a;
+}
+
+button.danger {
+  background: #6b2030;
+}
+
+button.danger:hover {
+  background: #8b2840;
+}
+
+input[type="text"],
+input[type="password"] {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
+.card {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.card:hover {
+  border-color: #1a4a7a;
+}
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.book-card {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.book-card:hover {
+  transform: translateY(-2px);
+}
+
+.book-card h3 {
+  color: #e94560;
+  margin-bottom: 4px;
+}
+
+.book-card .author {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.book-card .preview {
+  color: #999;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-row input {
+  flex: 1;
+}
+
+.preference-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.preference-item span {
+  flex: 1;
+}
+
+.analysis-result {
+  margin-bottom: 16px;
+}
+
+.analysis-result .question {
+  font-weight: 600;
+  color: #e94560;
+  margin-bottom: 4px;
+}
+
+.analysis-result .answer {
+  color: #c0c0d0;
+  line-height: 1.6;
+}
+
+.style-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.style-bar .label {
+  width: 180px;
+  font-size: 13px;
+  text-transform: capitalize;
+  color: #a0a0b8;
+}
+
+.style-bar .bar {
+  flex: 1;
+  height: 8px;
+  background: #0f3460;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.style-bar .bar-fill {
+  height: 100%;
+  background: #e94560;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.style-bar .value {
+  width: 30px;
+  text-align: right;
+  font-size: 13px;
+  color: #888;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.error {
+  color: #e94560;
+  background: #2a1520;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.loading {
+  color: #888;
+  font-style: italic;
+}
+
+.empty-state {
+  color: #666;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.back-link {
+  color: #e94560;
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.similarity-score {
+  font-size: 32px;
+  font-weight: 700;
+  color: #e94560;
+}
+
+.similarity-label {
+  color: #888;
+  font-size: 13px;
+}
