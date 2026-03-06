@@ -38,6 +38,17 @@ app.on('window-all-closed', () => {
 function registerIpcHandlers() {
   const db = getDatabase();
 
+  // Dialogs
+  ipcMain.handle('dialog:confirm', async (_event, message: string) => {
+    const result = await dialog.showMessageBox(mainWindow!, {
+      type: 'question',
+      buttons: ['Cancel', 'Delete'],
+      defaultId: 0,
+      message,
+    });
+    return result.response === 1;
+  });
+
   // Settings
   ipcMain.handle('settings:getApiKey', () => {
     const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('api_key') as { value: string } | undefined;
@@ -115,6 +126,7 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('books:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM usage_log WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM style_profiles WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM books WHERE id = ?').run(id);

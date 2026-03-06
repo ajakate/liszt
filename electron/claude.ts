@@ -42,6 +42,26 @@ interface StyleProfileResponse {
   usage: UsageInfo;
 }
 
+function extractJSON(text: string): string {
+  let s = text.trim();
+  // Strip markdown code blocks
+  if (s.startsWith('```')) {
+    s = s.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+  // Find the first [ or { and its matching closing bracket
+  const start = s.search(/[\[{]/);
+  if (start === -1) throw new Error('No JSON found in response');
+  const openChar = s[start];
+  const closeChar = openChar === '[' ? ']' : '}';
+  let depth = 0;
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === openChar) depth++;
+    else if (s[i] === closeChar) depth--;
+    if (depth === 0) return s.substring(start, i + 1);
+  }
+  throw new Error('Unterminated JSON in response');
+}
+
 function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
   const pricing = MODEL_PRICING[model] || MODEL_PRICING[DEFAULT_MODEL];
   return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
@@ -89,16 +109,10 @@ ${text}`,
   const content = response.content[0];
   if (content.type !== 'text') throw new Error('Unexpected response type');
 
-  // Parse JSON from response, handling potential markdown code blocks
-  let jsonText = content.text.trim();
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-  }
-
   const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
 
   return {
-    results: JSON.parse(jsonText),
+    results: JSON.parse(extractJSON(content.text)),
     usage: {
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,
@@ -158,15 +172,10 @@ ${text}`,
   const content = response.content[0];
   if (content.type !== 'text') throw new Error('Unexpected response type');
 
-  let jsonText = content.text.trim();
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-  }
-
   const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
 
   return {
-    profile: JSON.parse(jsonText),
+    profile: JSON.parse(extractJSON(content.text)),
     usage: {
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,

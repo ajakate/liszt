@@ -77,6 +77,7 @@ declare global {
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
       getTotalCost: () => Promise<number>;
       estimateCost: (bookId: number) => Promise<number>;
+      showConfirm: (message: string) => Promise<boolean>;
     };
   }
 }

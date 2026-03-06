@@ -73,7 +73,8 @@ export default function BookDetail() {
   }
 
   async function handleDelete() {
-    if (confirm(`Delete "${book?.title}"? This cannot be undone.`)) {
+    const confirmed = await window.api.showConfirm(`Delete "${book?.title}"? This cannot be undone.`);
+    if (confirmed) {
       await window.api.deleteBook(bookId);
       navigate('/');
     }

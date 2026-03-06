@@ -31,4 +31,7 @@ contextBridge.exposeInMainWorld('api', {
   // Usage
   getTotalCost: () => ipcRenderer.invoke('usage:getTotalCost'),
   estimateCost: (bookId: number) => ipcRenderer.invoke('usage:estimateCost', bookId),
+
+  // Dialogs
+  showConfirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
 });
