@@ -66,7 +66,7 @@ declare global {
       getPreferences: () => Promise<Preference[]>;
       addPreference: (question: string) => Promise<number>;
       deletePreference: (id: number) => Promise<void>;
-      importBook: () => Promise<Book | null>;
+      importBook: () => Promise<Book[]>;
       getBooks: () => Promise<Book[]>;
       getBook: (id: number) => Promise<Book>;
       deleteBook: (id: number) => Promise<void>;

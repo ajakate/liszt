@@ -95,31 +95,37 @@ function registerIpcHandlers() {
   ipcMain.handle('books:import', async () => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       filters: [{ name: 'eBooks', extensions: ['epub'] }],
-      properties: ['openFile'],
+      properties: ['openFile', 'multiSelections'],
     });
 
-    if (result.canceled || result.filePaths.length === 0) return null;
+    if (result.canceled || result.filePaths.length === 0) return [];
 
-    const filePath = result.filePaths[0];
-    const metadata = extractEpubMetadata(filePath);
-    const text = extractEpubText(filePath);
+    const imported = [];
+    for (const filePath of result.filePaths) {
+      try {
+        const metadata = extractEpubMetadata(filePath);
+        const text = extractEpubText(filePath);
+        const textPreview = text.substring(0, 5000);
+        const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
 
-    // Store a truncated version of the text for the DB (full text can be very large)
-    const textPreview = text.substring(0, 5000);
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+        const insertResult = db.prepare(
+          'INSERT INTO books (title, author, file_path, text_content, text_preview, word_count) VALUES (?, ?, ?, ?, ?, ?)'
+        ).run(metadata.title, metadata.author, filePath, text, textPreview, wordCount);
 
-    const insertResult = db.prepare(
-      'INSERT INTO books (title, author, file_path, text_content, text_preview, word_count) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(metadata.title, metadata.author, filePath, text, textPreview, wordCount);
+        imported.push({
+          id: insertResult.lastInsertRowid,
+          title: metadata.title,
+          author: metadata.author,
+          file_path: filePath,
+          text_preview: textPreview,
+          word_count: wordCount,
+        });
+      } catch (e: any) {
+        console.error(`Failed to import ${filePath}: ${e.message}`);
+      }
+    }
 
-    return {
-      id: insertResult.lastInsertRowid,
-      title: metadata.title,
-      author: metadata.author,
-      file_path: filePath,
-      text_preview: textPreview,
-      word_count: wordCount,
-    };
+    return imported;
   });
 
   ipcMain.handle('books:getAll', () => {

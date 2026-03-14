@@ -24,8 +24,8 @@ export default function Library() {
   async function handleImport() {
     setLoading(true);
     try {
-      const book = await window.api.importBook();
-      if (book) {
+      const imported = await window.api.importBook();
+      if (imported.length > 0) {
         await loadBooks();
       }
     } finally {
