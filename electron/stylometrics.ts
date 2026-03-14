@@ -286,7 +286,7 @@ function describeLevel(score: number): string {
   return 'high';
 }
 
-function generateDescription(scores: Record<string, number>): string {
+function generateDescription(scores: StyleScores): string {
   const parts: string[] = [];
 
   const sl = describeLevel(scores.sentence_length_mean);
