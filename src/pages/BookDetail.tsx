@@ -72,6 +72,11 @@ export default function BookDetail() {
     }
   }
 
+  async function handleRating(rating: number | null) {
+    await window.api.setRating(bookId, rating);
+    setBook((prev) => prev ? { ...prev, rating } : prev);
+  }
+
   async function handleDelete() {
     const confirmed = await window.api.showConfirm(`Delete "${book?.title}"? This cannot be undone.`);
     if (confirmed) {
@@ -88,9 +93,23 @@ export default function BookDetail() {
 
       <h2>{book.title}</h2>
       <p style={{ color: '#888', marginBottom: 4 }}>{book.author}</p>
-      <p style={{ color: '#666', marginBottom: 20, fontSize: 13 }}>
+      <p style={{ color: '#666', marginBottom: 12, fontSize: 13 }}>
         {book.word_count?.toLocaleString()} words ({formatPageCount(book.word_count || 0)})
       </p>
+
+      <div className="rating-row">
+        <span className="rating-label">Rating:</span>
+        {[0,1,2,3,4,5,6,7,8,9,10].map((val) => (
+          <button
+            key={val}
+            className={`rating-btn ${book.rating === val ? 'rating-active' : ''}`}
+            onClick={() => handleRating(book.rating === val ? null : val)}
+            title={val === 0 ? 'Did not finish' : `${val}/10`}
+          >
+            {val === 0 ? 'DNF' : val}
+          </button>
+        ))}
+      </div>
 
       {error && <div className="error">{error}</div>}
 

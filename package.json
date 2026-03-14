@@ -1,6 +1,6 @@
 {
   "name": "liszt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Book analysis app - know if you'll like a book before reading it",
   "main": "dist-electron/main.js",
   "scripts": {

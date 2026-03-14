@@ -305,6 +305,41 @@ input[type="password"]:focus {
   font-size: 13px;
 }
 
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.rating-label {
+  color: #888;
+  font-size: 13px;
+  margin-right: 8px;
+}
+
+.rating-btn {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  color: #888;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  min-width: 32px;
+  cursor: pointer;
+}
+
+.rating-btn:hover {
+  border-color: #e94560;
+  color: #e0e0e0;
+}
+
+.rating-active {
+  background: #e94560;
+  border-color: #e94560;
+  color: white;
+}
+
 .cost-badge {
   color: #888;
   font-size: 13px;

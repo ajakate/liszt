@@ -54,6 +54,11 @@ export default function Library() {
               <div className="author">{book.author}</div>
               <div style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>
                 {book.word_count?.toLocaleString()} words ({formatPageCount(book.word_count || 0)})
+                {book.rating !== null && book.rating !== undefined && (
+                  <span style={{ marginLeft: 8, color: '#e94560' }}>
+                    {book.rating === 0 ? 'DNF' : `${book.rating}/10`}
+                  </span>
+                )}
               </div>
               <div className="preview">{book.text_preview?.substring(0, 150)}...</div>
             </div>

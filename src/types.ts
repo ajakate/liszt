@@ -5,6 +5,7 @@ export interface Book {
   file_path: string;
   text_preview: string;
   word_count: number;
+  rating: number | null;
   created_at: string;
 }
 
@@ -70,6 +71,7 @@ declare global {
       getBooks: () => Promise<Book[]>;
       getBook: (id: number) => Promise<Book>;
       deleteBook: (id: number) => Promise<void>;
+      setRating: (id: number, rating: number | null) => Promise<void>;
       runAnalysis: (bookId: number) => Promise<{ results: AnalysisResult[]; usage: UsageInfo }>;
       getAnalysisResults: (bookId: number) => Promise<AnalysisResult[]>;
       generateStyleProfile: (bookId: number) => Promise<StyleProfile & { usage: UsageInfo }>;

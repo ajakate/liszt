@@ -75,6 +75,13 @@ const migrations: Migration[] = [
       db.exec('ALTER TABLE books ADD COLUMN word_count INTEGER DEFAULT 0');
     },
   },
+  {
+    version: 3,
+    description: 'Add rating to books',
+    up: (db) => {
+      db.exec('ALTER TABLE books ADD COLUMN rating INTEGER');
+    },
+  },
   // To add a new migration, append here:
 ];
 
