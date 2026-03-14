@@ -29,8 +29,16 @@ body {
   font-size: 24px;
   font-weight: 700;
   color: #e94560;
-  margin-bottom: 24px;
+  margin-bottom: 2px;
   padding-left: 12px;
+}
+
+.app-version {
+  font-size: 11px;
+  color: #666;
+  padding-left: 12px;
+  margin-bottom: 20px;
+  display: block;
 }
 
 .sidebar a {

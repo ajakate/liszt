@@ -71,6 +71,7 @@ export interface ModelOption {
 declare global {
   interface Window {
     api: {
+      getVersion: () => Promise<string>;
       getApiKey: () => Promise<string>;
       setApiKey: (key: string) => Promise<void>;
       getModel: () => Promise<string>;

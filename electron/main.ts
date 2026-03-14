@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, nativeImage, Menu } from 'electron';
 import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
@@ -32,6 +32,32 @@ function createWindow() {
 app.whenReady().then(() => {
   const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
   app.dock?.setIcon(nativeImage.createFromPath(iconPath));
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        {
+          label: `About Liszt`,
+          click: () => {
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'About Liszt',
+              message: `Liszt v${app.getVersion()}`,
+              detail: 'Why waste your time?',
+              icon: nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')),
+            });
+          },
+        },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    { role: 'editMenu' },
+    { role: 'windowMenu' },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+
   initDatabase();
   createWindow();
   registerIpcHandlers();
@@ -43,6 +69,9 @@ app.on('window-all-closed', () => {
 
 function registerIpcHandlers() {
   const db = getDatabase();
+
+  // App info
+  ipcMain.handle('app:getVersion', () => app.getVersion());
 
   // Dialogs
   ipcMain.handle('dialog:confirm', async (_event, message: string) => {

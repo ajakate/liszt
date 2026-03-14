@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
+  // App
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
+
   // Settings
   getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
   setApiKey: (key: string) => ipcRenderer.invoke('settings:setApiKey', key),
