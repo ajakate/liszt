@@ -340,6 +340,46 @@ input[type="password"]:focus {
   color: white;
 }
 
+.tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.tag-btn {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  color: #888;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tag-btn:hover {
+  border-color: #e94560;
+  color: #e0e0e0;
+}
+
+.tag-active {
+  background: #e94560;
+  border-color: #e94560;
+  color: white;
+  font-weight: 600;
+}
+
+.tag-badge {
+  background: #0f3460;
+  color: #a0a0b8;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  display: inline-block;
+  margin-right: 4px;
+}
+
 .cost-badge {
   color: #888;
   font-size: 13px;

@@ -33,6 +33,16 @@ contextBridge.exposeInMainWorld('api', {
   getTotalCost: () => ipcRenderer.invoke('usage:getTotalCost'),
   estimateCost: (bookId: number) => ipcRenderer.invoke('usage:estimateCost', bookId),
 
+  // Tags
+  getTags: () => ipcRenderer.invoke('tags:getAll'),
+  createTag: (name: string) => ipcRenderer.invoke('tags:create', name),
+  updateTag: (id: number, name: string) => ipcRenderer.invoke('tags:update', id, name),
+  deleteTag: (id: number) => ipcRenderer.invoke('tags:delete', id),
+  getBookTags: (bookId: number) => ipcRenderer.invoke('tags:getForBook', bookId),
+  addTagToBook: (bookId: number, tagId: number) => ipcRenderer.invoke('tags:addToBook', bookId, tagId),
+  removeTagFromBook: (bookId: number, tagId: number) => ipcRenderer.invoke('tags:removeFromBook', bookId, tagId),
+  getAllBookTags: () => ipcRenderer.invoke('tags:getAllBookTags'),
+
   // Dialogs
   showConfirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
 });

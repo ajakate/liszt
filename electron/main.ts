@@ -137,6 +137,7 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('books:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM book_tags WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM usage_log WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM style_profiles WHERE book_id = ?').run(id);
@@ -245,5 +246,44 @@ function registerIpcHandlers() {
     const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
     const textLength = book.text_content.length;
     return estimateCost(model, textLength);
+  });
+
+  // Tags
+  ipcMain.handle('tags:getAll', () => {
+    return db.prepare('SELECT * FROM tags ORDER BY name').all();
+  });
+
+  ipcMain.handle('tags:create', (_event, name: string) => {
+    const result = db.prepare('INSERT INTO tags (name) VALUES (?)').run(name.trim());
+    return result.lastInsertRowid;
+  });
+
+  ipcMain.handle('tags:update', (_event, id: number, name: string) => {
+    db.prepare('UPDATE tags SET name = ? WHERE id = ?').run(name.trim(), id);
+  });
+
+  ipcMain.handle('tags:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM book_tags WHERE tag_id = ?').run(id);
+    db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+  });
+
+  ipcMain.handle('tags:getForBook', (_event, bookId: number) => {
+    return db.prepare(
+      'SELECT t.* FROM tags t JOIN book_tags bt ON t.id = bt.tag_id WHERE bt.book_id = ? ORDER BY t.name'
+    ).all(bookId);
+  });
+
+  ipcMain.handle('tags:addToBook', (_event, bookId: number, tagId: number) => {
+    db.prepare('INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)').run(bookId, tagId);
+  });
+
+  ipcMain.handle('tags:removeFromBook', (_event, bookId: number, tagId: number) => {
+    db.prepare('DELETE FROM book_tags WHERE book_id = ? AND tag_id = ?').run(bookId, tagId);
+  });
+
+  ipcMain.handle('tags:getAllBookTags', () => {
+    return db.prepare(
+      'SELECT bt.book_id, t.id, t.name FROM book_tags bt JOIN tags t ON bt.tag_id = t.id ORDER BY t.name'
+    ).all();
   });
 }

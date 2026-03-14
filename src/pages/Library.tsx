@@ -9,6 +9,7 @@ function formatPageCount(wordCount: number): string {
 
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
+  const [bookTags, setBookTags] = useState<Record<number, { id: number; name: string }[]>>({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -17,8 +18,18 @@ export default function Library() {
   }, []);
 
   async function loadBooks() {
-    const result = await window.api.getBooks();
+    const [result, allBookTags] = await Promise.all([
+      window.api.getBooks(),
+      window.api.getAllBookTags(),
+    ]);
     setBooks(result);
+
+    const tagMap: Record<number, { id: number; name: string }[]> = {};
+    for (const bt of allBookTags) {
+      if (!tagMap[bt.book_id]) tagMap[bt.book_id] = [];
+      tagMap[bt.book_id].push({ id: bt.id, name: bt.name });
+    }
+    setBookTags(tagMap);
   }
 
   async function handleImport() {
@@ -60,6 +71,13 @@ export default function Library() {
                   </span>
                 )}
               </div>
+              {bookTags[book.id] && bookTags[book.id].length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  {bookTags[book.id].map((tag) => (
+                    <span key={tag.id} className="tag-badge">{tag.name}</span>
+                  ))}
+                </div>
+              )}
               <div className="preview">{book.text_preview?.substring(0, 150)}...</div>
             </div>
           ))}

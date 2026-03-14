@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile, UsageInfo } from '../types';
+import { Book, AnalysisResult, StyleProfile, UsageInfo, Tag } from '../types';
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -26,22 +26,39 @@ export default function BookDetail() {
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [lastAnalysisCost, setLastAnalysisCost] = useState<UsageInfo | null>(null);
   const [lastStyleCost, setLastStyleCost] = useState<UsageInfo | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [bookTags, setBookTags] = useState<Tag[]>([]);
 
   useEffect(() => {
     loadData();
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData, estimate] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate, tags, bTags] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
       window.api.estimateCost(bookId),
+      window.api.getTags(),
+      window.api.getBookTags(bookId),
     ]);
     setBook(bookData);
     setResults(analysisData);
     setStyleProfile(styleData);
     setEstimatedCost(estimate);
+    setAllTags(tags);
+    setBookTags(bTags);
+  }
+
+  async function toggleTag(tagId: number) {
+    const hasTag = bookTags.some((t) => t.id === tagId);
+    if (hasTag) {
+      await window.api.removeTagFromBook(bookId, tagId);
+    } else {
+      await window.api.addTagToBook(bookId, tagId);
+    }
+    const updated = await window.api.getBookTags(bookId);
+    setBookTags(updated);
   }
 
   async function handleAnalyze() {
@@ -110,6 +127,24 @@ export default function BookDetail() {
           </button>
         ))}
       </div>
+
+      {allTags.length > 0 && (
+        <div className="tag-row">
+          <span className="rating-label">Tags:</span>
+          {allTags.map((tag) => {
+            const active = bookTags.some((t) => t.id === tag.id);
+            return (
+              <button
+                key={tag.id}
+                className={`tag-btn ${active ? 'tag-active' : ''}`}
+                onClick={() => toggleTag(tag.id)}
+              >
+                {tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {error && <div className="error">{error}</div>}
 

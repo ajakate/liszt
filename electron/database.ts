@@ -82,6 +82,27 @@ const migrations: Migration[] = [
       db.exec('ALTER TABLE books ADD COLUMN rating INTEGER');
     },
   },
+  {
+    version: 4,
+    description: 'Add tags and book_tags',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE book_tags (
+          book_id INTEGER NOT NULL,
+          tag_id INTEGER NOT NULL,
+          PRIMARY KEY (book_id, tag_id),
+          FOREIGN KEY (book_id) REFERENCES books(id),
+          FOREIGN KEY (tag_id) REFERENCES tags(id)
+        );
+      `);
+    },
+  },
   // To add a new migration, append here:
 ];
 

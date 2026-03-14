@@ -51,6 +51,12 @@ export interface StyleProfile {
   description: string;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface ModelOption {
   id: string;
   name: string;
@@ -79,6 +85,14 @@ declare global {
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
       getTotalCost: () => Promise<number>;
       estimateCost: (bookId: number) => Promise<number>;
+      getTags: () => Promise<Tag[]>;
+      createTag: (name: string) => Promise<number>;
+      updateTag: (id: number, name: string) => Promise<void>;
+      deleteTag: (id: number) => Promise<void>;
+      getBookTags: (bookId: number) => Promise<Tag[]>;
+      addTagToBook: (bookId: number, tagId: number) => Promise<void>;
+      removeTagFromBook: (bookId: number, tagId: number) => Promise<void>;
+      getAllBookTags: () => Promise<{ book_id: number; id: number; name: string }[]>;
       showConfirm: (message: string) => Promise<boolean>;
     };
   }
