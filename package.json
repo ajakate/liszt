@@ -1,6 +1,6 @@
 {
   "name": "liszt",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Why waste your time?",
   "main": "dist-electron/main.js",
   "scripts": {
