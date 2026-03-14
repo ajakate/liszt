@@ -6,19 +6,14 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            arch: arm64
-          - os: macos-13
-            arch: x64
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -38,33 +33,23 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Build DMG
-        run: npx electron-builder --mac --${{ matrix.arch }}
+      - name: Build arm64 DMG
+        run: npx electron-builder --mac --arm64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload DMG
-        uses: actions/upload-artifact@v4
-        with:
-          name: dmg-${{ matrix.arch }}
-          path: dist/*.dmg
+      - name: Rebuild native modules for x64
+        run: |
+          cd node_modules/better-sqlite3
+          npx --yes prebuild-install --runtime electron --target $(node -p "require('electron/package.json').version") --arch x64 || npx --yes node-gyp rebuild --arch=x64 --target=$(node -p "require('electron/package.json').version") --dist-url=https://electronjs.org/headers
+        env:
+          npm_config_arch: x64
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all DMGs
-        uses: actions/download-artifact@v4
-        with:
-          path: dmgs
-          merge-multiple: true
+      - name: Build x64 DMG
+        run: |
+          npx electron-builder --mac --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get version
         id: version
@@ -89,7 +74,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Liszt v${{ steps.version.outputs.version }}
-          files: dmgs/*.dmg
+          files: dist/*.dmg
           body: |
             ## Changes
             ${{ steps.commits.outputs.commits }}
