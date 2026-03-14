@@ -31,8 +31,8 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Build universal DMG
-        run: npx electron-builder --mac --universal
+      - name: Build DMGs (x64 + arm64)
+        run: npx electron-builder --mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
