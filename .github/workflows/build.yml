@@ -31,12 +31,13 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}-${{ github.run_number }}
-          name: Liszt v${{ steps.version.outputs.version }} (Build ${{ github.run_number }})
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Liszt v${{ steps.version.outputs.version }}
           files: dist/*.dmg
           generate_release_notes: true
+          make_latest: true
