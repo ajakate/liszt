@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Book, AnalysisResult, StyleProfile, UsageInfo, Tag } from '../types';
+
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -25,7 +26,6 @@ export default function BookDetail() {
   const [error, setError] = useState('');
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [lastAnalysisCost, setLastAnalysisCost] = useState<UsageInfo | null>(null);
-  const [lastStyleCost, setLastStyleCost] = useState<UsageInfo | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [bookTags, setBookTags] = useState<Tag[]>([]);
 
@@ -81,7 +81,6 @@ export default function BookDetail() {
     try {
       const result = await window.api.generateStyleProfile(bookId);
       setStyleProfile(result);
-      setLastStyleCost(result.usage);
     } catch (e: any) {
       setError(e.message || 'Style analysis failed');
     } finally {
@@ -159,7 +158,7 @@ export default function BookDetail() {
           {analyzing ? 'Analyzing...' : results.length > 0 ? 'Re-analyze' : 'Analyze Book'}
         </button>
         <button onClick={handleStyleProfile} disabled={generatingStyle} className="secondary">
-          {generatingStyle ? 'Generating...' : styleProfile ? 'Regenerate Style' : 'Generate Style Profile'}
+          {generatingStyle ? 'Computing...' : styleProfile ? 'Recompute Style' : 'Compute Style Profile'}
         </button>
         <button onClick={handleDelete} className="danger">Delete</button>
       </div>
@@ -167,12 +166,6 @@ export default function BookDetail() {
       {lastAnalysisCost && (
         <div className="cost-badge">
           Analysis cost: {formatCost(lastAnalysisCost.cost)} ({lastAnalysisCost.input_tokens.toLocaleString()} in / {lastAnalysisCost.output_tokens.toLocaleString()} out tokens)
-        </div>
-      )}
-
-      {lastStyleCost && (
-        <div className="cost-badge">
-          Style profile cost: {formatCost(lastStyleCost.cost)} ({lastStyleCost.input_tokens.toLocaleString()} in / {lastStyleCost.output_tokens.toLocaleString()} out tokens)
         </div>
       )}
 

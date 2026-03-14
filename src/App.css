@@ -225,7 +225,7 @@ input[type="password"]:focus {
 }
 
 .style-bar .label {
-  width: 180px;
+  width: 200px;
   font-size: 13px;
   text-transform: capitalize;
   color: #a0a0b8;
@@ -390,4 +390,95 @@ input[type="password"]:focus {
   display: inline-block;
   margin-right: 8px;
   margin-bottom: 16px;
+}
+
+.library-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tag-filter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.library-filters select {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  color: #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.library-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.library-table th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid #0f3460;
+  color: #a0a0b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.library-table th:hover {
+  color: #e0e0e0;
+}
+
+.library-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #0f3460;
+  font-size: 14px;
+}
+
+.library-table tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.library-table tbody tr:hover {
+  background: #1a1a3e;
+}
+
+.title-cell {
+  color: #e94560;
+  font-weight: 500;
+}
+
+.dnf-badge {
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rating-value {
+  color: #e94560;
+  font-weight: 500;
+}
+
+.no-rating {
+  color: #555;
+}
+
+.word-count {
+  display: block;
+  font-size: 13px;
+}
+
+.page-count {
+  display: block;
+  color: #666;
+  font-size: 11px;
 }

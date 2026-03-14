@@ -103,7 +103,13 @@ const migrations: Migration[] = [
       `);
     },
   },
-  // To add a new migration, append here:
+  {
+    version: 5,
+    description: 'Clear old Claude-generated style profiles for stylometric recomputation',
+    up: (db) => {
+      db.exec('DELETE FROM style_profiles');
+    },
+  },
 ];
 
 function getSchemaVersion(db: Database.Database): number {

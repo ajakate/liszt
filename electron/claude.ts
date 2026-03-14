@@ -32,16 +32,6 @@ interface AnalysisResponse {
   usage: UsageInfo;
 }
 
-interface StyleProfile {
-  scores: Record<string, number>;
-  description: string;
-}
-
-interface StyleProfileResponse {
-  profile: StyleProfile;
-  usage: UsageInfo;
-}
-
 function extractJSON(text: string): string {
   let s = text.trim();
   // Strip markdown code blocks
@@ -122,65 +112,3 @@ ${text}`,
   };
 }
 
-export async function generateStyleProfile(
-  apiKey: string,
-  model: string,
-  title: string,
-  author: string,
-  text: string
-): Promise<StyleProfileResponse> {
-  const client = new Anthropic({ apiKey });
-
-  const response = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    messages: [
-      {
-        role: 'user',
-        content: `You are a literary style analyst. Analyze the writing style of this book: "${title}" by ${author}.
-
-Rate the following dimensions on a scale of 1-10 and provide a brief overall style description (2-3 sentences).
-
-Dimensions to rate:
-- prose_density: 1=sparse/minimal, 10=dense/ornate
-- dialogue_ratio: 1=almost no dialogue, 10=dialogue-heavy
-- sentence_length: 1=very short sentences, 10=very long complex sentences
-- vocabulary_complexity: 1=simple everyday words, 10=advanced/literary vocabulary
-- tone_lightness: 1=very dark/serious, 10=very light/humorous
-- pacing: 1=very slow/contemplative, 10=very fast/action-packed
-- metaphor_usage: 1=literal/straightforward, 10=heavily figurative
-- emotional_intensity: 1=restrained/subtle, 10=intense/dramatic
-- formality: 1=very casual/conversational, 10=very formal/literary
-- descriptiveness: 1=minimal description, 10=richly detailed
-
-Respond in JSON format:
-{
-  "scores": {
-    "prose_density": 7,
-    "dialogue_ratio": 5,
-    ...
-  },
-  "description": "A brief 2-3 sentence description of the overall writing style."
-}
-
-Book text:
-${text}`,
-      },
-    ],
-  });
-
-  const content = response.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type');
-
-  const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
-
-  return {
-    profile: JSON.parse(extractJSON(content.text)),
-    usage: {
-      input_tokens: response.usage.input_tokens,
-      output_tokens: response.usage.output_tokens,
-      cost,
-      model,
-    },
-  };
-}

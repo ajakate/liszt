@@ -31,16 +31,22 @@ export interface UsageInfo {
 }
 
 export interface StyleScores {
-  prose_density: number;
+  sentence_length_mean: number;
+  sentence_length_variance: number;
+  paragraph_length: number;
+  vocabulary_richness: number;
+  hapax_ratio: number;
+  function_word_density: number;
   dialogue_ratio: number;
-  sentence_length: number;
-  vocabulary_complexity: number;
-  tone_lightness: number;
-  pacing: number;
-  metaphor_usage: number;
-  emotional_intensity: number;
-  formality: number;
-  descriptiveness: number;
+  adverb_density: number;
+  em_dash_frequency: number;
+  exclamation_frequency: number;
+  semicolon_frequency: number;
+  vocabulary_commonality: number;
+  latinate_ratio: number;
+  said_bookism_ratio: number;
+  intensifier_density: number;
+  simile_density: number;
 }
 
 export interface StyleProfile {
@@ -80,7 +86,7 @@ declare global {
       setRating: (id: number, rating: number | null) => Promise<void>;
       runAnalysis: (bookId: number) => Promise<{ results: AnalysisResult[]; usage: UsageInfo }>;
       getAnalysisResults: (bookId: number) => Promise<AnalysisResult[]>;
-      generateStyleProfile: (bookId: number) => Promise<StyleProfile & { usage: UsageInfo }>;
+      generateStyleProfile: (bookId: number) => Promise<StyleProfile>;
       getStyleProfile: (bookId: number) => Promise<StyleProfile | null>;
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
       getTotalCost: () => Promise<number>;

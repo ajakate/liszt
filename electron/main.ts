@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron';
 import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
-import { analyzeBook, generateStyleProfile, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
+import { analyzeBook, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
+import { computeStyleProfile } from './stylometrics';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -112,8 +113,16 @@ function registerIpcHandlers() {
           'INSERT INTO books (title, author, file_path, text_content, text_preview, word_count) VALUES (?, ?, ?, ?, ?, ?)'
         ).run(metadata.title, metadata.author, filePath, text, textPreview, wordCount);
 
+        const bookId = insertResult.lastInsertRowid as number;
+
+        // Compute style profile on import (instant, no API cost)
+        const { scores, description } = computeStyleProfile(text);
+        db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
+          bookId, JSON.stringify(scores), description
+        );
+
         imported.push({
-          id: insertResult.lastInsertRowid,
+          id: bookId,
           title: metadata.title,
           author: metadata.author,
           file_path: filePath,
@@ -186,29 +195,19 @@ function registerIpcHandlers() {
   });
 
   // Style profiles
-  ipcMain.handle('style:generate', async (_event, bookId: number) => {
-    const apiKey = (db.prepare('SELECT value FROM settings WHERE key = ?').get('api_key') as { value: string } | undefined)?.value;
-    if (!apiKey) throw new Error('API key not set. Please set your Claude API key in Settings.');
-
+  ipcMain.handle('style:generate', (_event, bookId: number) => {
     const book = db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as any;
     if (!book) throw new Error('Book not found');
 
-    const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
-
-    const { profile, usage } = await generateStyleProfile(apiKey, model, book.title, book.author, book.text_content);
+    const { scores, description } = computeStyleProfile(book.text_content);
 
     db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
       bookId,
-      JSON.stringify(profile.scores),
-      profile.description
+      JSON.stringify(scores),
+      description
     );
 
-    // Log usage
-    db.prepare('INSERT INTO usage_log (book_id, operation, model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?, ?, ?)').run(
-      bookId, 'style_profile', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
-    );
-
-    return { ...profile, usage };
+    return { book_id: bookId, scores, description };
   });
 
   ipcMain.handle('style:getProfile', (_event, bookId: number) => {

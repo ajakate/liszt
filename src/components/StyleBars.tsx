@@ -1,16 +1,22 @@
 import { StyleScores } from '../types';
 
 const LABELS: Record<string, string> = {
-  prose_density: 'Prose Density',
+  sentence_length_mean: 'Sentence Length',
+  sentence_length_variance: 'Sentence Variation',
+  paragraph_length: 'Paragraph Length',
+  vocabulary_richness: 'Vocabulary Richness',
+  hapax_ratio: 'Rare Word Usage',
+  function_word_density: 'Function Word Density',
   dialogue_ratio: 'Dialogue Ratio',
-  sentence_length: 'Sentence Length',
-  vocabulary_complexity: 'Vocabulary Complexity',
-  tone_lightness: 'Tone Lightness',
-  pacing: 'Pacing',
-  metaphor_usage: 'Metaphor Usage',
-  emotional_intensity: 'Emotional Intensity',
-  formality: 'Formality',
-  descriptiveness: 'Descriptiveness',
+  adverb_density: 'Adverb Density',
+  em_dash_frequency: 'Em-Dash Usage',
+  exclamation_frequency: 'Exclamation Usage',
+  semicolon_frequency: 'Semicolon Usage',
+  vocabulary_commonality: 'Vocabulary Commonality',
+  latinate_ratio: 'Latinate Vocabulary',
+  said_bookism_ratio: '"Said" vs Bookisms',
+  intensifier_density: 'Intensifier Usage',
+  simile_density: 'Simile Density',
 };
 
 export default function StyleBars({ scores }: { scores: StyleScores }) {
