@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import { app } from 'electron';
+import { computeStyleProfile } from './stylometrics';
 
 let db: Database.Database;
 
@@ -108,6 +109,18 @@ const migrations: Migration[] = [
     description: 'Clear old Claude-generated style profiles for stylometric recomputation',
     up: (db) => {
       db.exec('DELETE FROM style_profiles');
+    },
+  },
+  {
+    version: 6,
+    description: 'Compute stylometric profiles for all existing books',
+    up: (db) => {
+      const books = db.prepare('SELECT id, text_content FROM books').all() as { id: number; text_content: string }[];
+      const insert = db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)');
+      for (const book of books) {
+        const { scores, description } = computeStyleProfile(book.text_content);
+        insert.run(book.id, JSON.stringify(scores), description);
+      }
     },
   },
 ];
