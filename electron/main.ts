@@ -151,10 +151,7 @@ function registerIpcHandlers() {
     const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
     const questions = preferences.map((p: any) => p.question);
 
-    // Use first ~100k chars of text (Claude context limit consideration)
-    const textSample = book.text_content.substring(0, 100000);
-
-    const { results, usage } = await analyzeBook(apiKey, model, book.title, book.author, textSample, questions);
+    const { results, usage } = await analyzeBook(apiKey, model, book.title, book.author, book.text_content, questions);
 
     // Clear old results for this book
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(bookId);
@@ -186,9 +183,8 @@ function registerIpcHandlers() {
     if (!book) throw new Error('Book not found');
 
     const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
-    const textSample = book.text_content.substring(0, 100000);
 
-    const { profile, usage } = await generateStyleProfile(apiKey, model, book.title, book.author, textSample);
+    const { profile, usage } = await generateStyleProfile(apiKey, model, book.title, book.author, book.text_content);
 
     db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
       bookId,
@@ -237,7 +233,7 @@ function registerIpcHandlers() {
     const book = db.prepare('SELECT text_content FROM books WHERE id = ?').get(bookId) as any;
     if (!book) return 0;
     const model = (db.prepare('SELECT value FROM settings WHERE key = ?').get('model') as { value: string } | undefined)?.value || DEFAULT_MODEL;
-    const textLength = Math.min(book.text_content.length, 100000);
+    const textLength = book.text_content.length;
     return estimateCost(model, textLength);
   });
 }
