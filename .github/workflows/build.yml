@@ -31,8 +31,16 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Build DMGs (x64 + arm64)
-        run: npx electron-builder --mac
+      - name: Build arm64 DMG
+        run: npx electron-builder --mac --arm64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rebuild native modules for x64
+        run: npx @electron/rebuild -f -w better-sqlite3 --arch=x64
+
+      - name: Build x64 DMG
+        run: npx electron-builder --mac --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
