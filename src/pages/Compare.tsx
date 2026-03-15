@@ -1,30 +1,41 @@
-import { useState, useEffect } from 'react';
-import { StyleProfile, StyleScores } from '../types';
+import { useState, useEffect, useCallback } from 'react';
+import { StyleProfile, StyleComparison, FeatureEntry } from '../types';
 import StyleBars from '../components/StyleBars';
 
-function cosineSimilarity(a: StyleScores, b: StyleScores): number {
-  const keys = Object.keys(a) as (keyof StyleScores)[];
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (const key of keys) {
-    const va = a[key] || 0;
-    const vb = b[key] || 0;
-    dotProduct += va * vb;
-    normA += va * va;
-    normB += vb * vb;
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+const CATEGORY_LABELS: Record<string, string> = {
+  sentence_structure: 'Sentence Structure',
+  punctuation: 'Punctuation',
+  dialogue: 'Dialogue',
+  vocabulary: 'Vocabulary',
+  pos_distribution: 'Parts of Speech',
+};
 
 export default function Compare() {
   const [profiles, setProfiles] = useState<StyleProfile[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
+  const [comparison, setComparison] = useState<StyleComparison | null>(null);
+  const [registry, setRegistry] = useState<FeatureEntry[]>([]);
+  const [showExplainer, setShowExplainer] = useState(false);
 
   useEffect(() => {
-    window.api?.getAllStyleProfiles().then(setProfiles).catch(console.error);
+    Promise.all([
+      window.api?.getAllStyleProfiles(),
+      window.api?.getFeatureRegistry(),
+    ]).then(([p, r]) => {
+      setProfiles(p || []);
+      setRegistry(r || []);
+    }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (selected.length === 2) {
+      window.api.compareStyles(selected[0], selected[1])
+        .then(setComparison)
+        .catch(console.error);
+    } else {
+      setComparison(null);
+    }
+  }, [selected]);
 
   function toggleSelect(bookId: number) {
     setSelected((prev) =>
@@ -34,7 +45,6 @@ export default function Compare() {
 
   const profileA = profiles.find((p) => p.book_id === selected[0]);
   const profileB = profiles.find((p) => p.book_id === selected[1]);
-  const similarity = profileA && profileB ? cosineSimilarity(profileA.scores, profileB.scores) : null;
 
   return (
     <div>
@@ -42,7 +52,7 @@ export default function Compare() {
 
       {profiles.length < 2 ? (
         <div className="empty-state">
-          <p>Generate style profiles for at least 2 books to compare them.</p>
+          <p>Import at least 2 books to compare their writing styles.</p>
         </div>
       ) : (
         <>
@@ -59,26 +69,53 @@ export default function Compare() {
             ))}
           </div>
 
-          {similarity !== null && (
-            <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div className="similarity-score">{Math.round(similarity * 100)}%</div>
-              <div className="similarity-label">Style Similarity</div>
-            </div>
+          {comparison && (
+            <>
+              <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div className="similarity-score">{Math.round(comparison.overall * 100)}%</div>
+                <div className="similarity-label">
+                  Overall Style Similarity
+                  <button
+                    className="explainer-toggle"
+                    onClick={() => setShowExplainer(prev => !prev)}
+                    title="What does this mean?"
+                  >
+                    ?
+                  </button>
+                </div>
+                {showExplainer && (
+                  <p className="similarity-explainer">
+                    80%+ very similar style. 50–80% some shared habits. Below 50% distinctly different.
+                    Negative means opposite tendencies. Scores improve with more books in your library.
+                  </p>
+                )}
+              </div>
+
+              <div className="category-similarity">
+                {Object.entries(comparison.byCategory).map(([category, score]) => (
+                  <div key={category} className="category-sim-row">
+                    <span className="category-sim-label">{CATEGORY_LABELS[category] || category}</span>
+                    <div className="bar">
+                      <div className="bar-fill" style={{ width: `${Math.max(0, score * 100)}%` }} />
+                    </div>
+                    <span className="category-sim-value">{Math.round(score * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           <div className="compare-grid">
-            {profileA && (
+            {profileA && registry.length > 0 && (
               <div className="card">
                 <h3>{profileA.title}</h3>
-                <p style={{ color: '#888', marginBottom: 12, fontSize: 13 }}>{profileA.description}</p>
-                <StyleBars scores={profileA.scores} />
+                <StyleBars features={profileA.features} zScores={profileA.zScores} registry={registry} />
               </div>
             )}
-            {profileB && (
+            {profileB && registry.length > 0 && (
               <div className="card">
                 <h3>{profileB.title}</h3>
-                <p style={{ color: '#888', marginBottom: 12, fontSize: 13 }}>{profileB.description}</p>
-                <StyleBars scores={profileB.scores} />
+                <StyleBars features={profileB.features} zScores={profileB.zScores} registry={registry} />
               </div>
             )}
           </div>

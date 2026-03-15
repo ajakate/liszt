@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import { app } from 'electron';
-import { computeStyleProfile } from './stylometrics';
+import { computeAllFeatures, getFeatureRegistry } from './stylometrics';
+import { recomputeFeatureStatistics } from './feature-stats';
 
 let db: Database.Database;
 
@@ -106,27 +107,82 @@ const migrations: Migration[] = [
   },
   {
     version: 5,
-    description: 'Clear old Claude-generated style profiles for stylometric recomputation',
+    description: 'Clear old Claude-generated style profiles',
     up: (db) => {
       db.exec('DELETE FROM style_profiles');
     },
   },
   {
     version: 6,
-    description: 'Compute stylometric profiles for all existing books',
+    description: 'Legacy stylometric profiles (no-op, superseded by v7)',
+    up: () => {},
+  },
+  {
+    version: 7,
+    description: 'Stylometric fingerprinting tables and backfill',
     up: (db) => {
+      db.exec(`
+        CREATE TABLE feature_registry (
+          feature_name TEXT PRIMARY KEY,
+          category TEXT NOT NULL,
+          description TEXT
+        );
+
+        CREATE TABLE book_features (
+          book_id INTEGER NOT NULL,
+          feature_name TEXT NOT NULL,
+          feature_value REAL NOT NULL,
+          PRIMARY KEY (book_id, feature_name),
+          FOREIGN KEY (book_id) REFERENCES books(id)
+        );
+
+        CREATE TABLE book_char_ngrams (
+          book_id INTEGER NOT NULL,
+          ngram TEXT NOT NULL,
+          frequency REAL NOT NULL,
+          PRIMARY KEY (book_id, ngram),
+          FOREIGN KEY (book_id) REFERENCES books(id)
+        );
+
+        CREATE TABLE feature_statistics (
+          feature_name TEXT PRIMARY KEY,
+          mean_value REAL NOT NULL,
+          std_dev REAL NOT NULL,
+          book_count INTEGER NOT NULL
+        );
+      `);
+
+      // Seed feature registry
+      const insertReg = db.prepare('INSERT INTO feature_registry (feature_name, category, description) VALUES (?, ?, ?)');
+      for (const entry of getFeatureRegistry()) {
+        insertReg.run(entry.feature_name, entry.category, entry.description);
+      }
+
+      // Backfill existing books
       const books = db.prepare('SELECT id, text_content FROM books').all() as { id: number; text_content: string }[];
-      const insert = db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)');
+      const insertFeature = db.prepare('INSERT INTO book_features (book_id, feature_name, feature_value) VALUES (?, ?, ?)');
+      const insertNgram = db.prepare('INSERT INTO book_char_ngrams (book_id, ngram, frequency) VALUES (?, ?, ?)');
+
       for (const book of books) {
-        const { scores, description } = computeStyleProfile(book.text_content);
-        insert.run(book.id, JSON.stringify(scores), description);
+        console.log(`  Computing features for book ${book.id}...`);
+        const { features, charNgrams } = computeAllFeatures(book.text_content);
+        for (const [name, value] of Object.entries(features)) {
+          insertFeature.run(book.id, name, value);
+        }
+        for (const [ngram, freq] of Object.entries(charNgrams)) {
+          insertNgram.run(book.id, ngram, freq);
+        }
+      }
+
+      // Compute initial statistics
+      if (books.length > 0) {
+        recomputeFeatureStatistics(db);
       }
     },
   },
 ];
 
 function getSchemaVersion(db: Database.Database): number {
-  // user_version is a built-in SQLite pragma — no extra table needed
   const row = db.pragma('user_version', { simple: true }) as number;
   return row;
 }

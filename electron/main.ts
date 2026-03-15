@@ -3,7 +3,8 @@ import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
 import { analyzeBook, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
-import { computeStyleProfile } from './stylometrics';
+import { computeAllFeatures, getFeatureRegistry } from './stylometrics';
+import { recomputeFeatureStatistics, getBookZScores, computeSimilarity } from './feature-stats';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -66,6 +67,25 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   app.quit();
 });
+
+// Helper: store computed features for a book
+function storeBookFeatures(db: ReturnType<typeof getDatabase>, bookId: number, text: string) {
+  const { features, charNgrams } = computeAllFeatures(text);
+
+  // Clear old features
+  db.prepare('DELETE FROM book_features WHERE book_id = ?').run(bookId);
+  db.prepare('DELETE FROM book_char_ngrams WHERE book_id = ?').run(bookId);
+
+  const insertFeature = db.prepare('INSERT INTO book_features (book_id, feature_name, feature_value) VALUES (?, ?, ?)');
+  for (const [name, value] of Object.entries(features)) {
+    insertFeature.run(bookId, name, value);
+  }
+
+  const insertNgram = db.prepare('INSERT INTO book_char_ngrams (book_id, ngram, frequency) VALUES (?, ?, ?)');
+  for (const [ngram, freq] of Object.entries(charNgrams)) {
+    insertNgram.run(bookId, ngram, freq);
+  }
+}
 
 function registerIpcHandlers() {
   const db = getDatabase();
@@ -144,11 +164,8 @@ function registerIpcHandlers() {
 
         const bookId = insertResult.lastInsertRowid as number;
 
-        // Compute style profile on import (instant, no API cost)
-        const { scores, description } = computeStyleProfile(text);
-        db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
-          bookId, JSON.stringify(scores), description
-        );
+        // Compute stylometric features on import
+        storeBookFeatures(db, bookId, text);
 
         imported.push({
           id: bookId,
@@ -163,6 +180,11 @@ function registerIpcHandlers() {
       }
     }
 
+    // Recompute global statistics after all imports
+    if (imported.length > 0) {
+      recomputeFeatureStatistics(db);
+    }
+
     return imported;
   });
 
@@ -175,11 +197,14 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('books:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM book_features WHERE book_id = ?').run(id);
+    db.prepare('DELETE FROM book_char_ngrams WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM book_tags WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM usage_log WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM style_profiles WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM books WHERE id = ?').run(id);
+    recomputeFeatureStatistics(db);
   });
 
   ipcMain.handle('books:setRating', (_event, id: number, rating: number | null) => {
@@ -202,16 +227,13 @@ function registerIpcHandlers() {
 
     const { results, usage } = await analyzeBook(apiKey, model, book.title, book.author, book.text_content, questions);
 
-    // Clear old results for this book
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(bookId);
 
-    // Store new results
     const insert = db.prepare('INSERT INTO analysis_results (book_id, question, answer) VALUES (?, ?, ?)');
     for (const result of results) {
       insert.run(bookId, result.question, result.answer);
     }
 
-    // Log usage
     db.prepare('INSERT INTO usage_log (book_id, operation, model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?, ?, ?)').run(
       bookId, 'analysis', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
     );
@@ -223,43 +245,38 @@ function registerIpcHandlers() {
     return db.prepare('SELECT * FROM analysis_results WHERE book_id = ? ORDER BY id').all(bookId);
   });
 
-  // Style profiles
+  // Style profiles (new fingerprint system)
   ipcMain.handle('style:generate', (_event, bookId: number) => {
     const book = db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as any;
     if (!book) throw new Error('Book not found');
 
-    const { scores, description } = computeStyleProfile(book.text_content);
+    storeBookFeatures(db, bookId, book.text_content);
+    recomputeFeatureStatistics(db);
 
-    db.prepare('INSERT OR REPLACE INTO style_profiles (book_id, profile_json, description) VALUES (?, ?, ?)').run(
-      bookId,
-      JSON.stringify(scores),
-      description
-    );
-
-    return { book_id: bookId, scores, description };
+    return getStyleProfileData(db, bookId);
   });
 
   ipcMain.handle('style:getProfile', (_event, bookId: number) => {
-    const row = db.prepare('SELECT * FROM style_profiles WHERE book_id = ?').get(bookId) as any;
-    if (!row) return null;
-    return {
-      book_id: row.book_id,
-      scores: JSON.parse(row.profile_json),
-      description: row.description,
-    };
+    return getStyleProfileData(db, bookId);
   });
 
   ipcMain.handle('style:getAllProfiles', () => {
-    const rows = db.prepare(
-      `SELECT sp.*, b.title, b.author FROM style_profiles sp JOIN books b ON sp.book_id = b.id`
-    ).all() as any[];
-    return rows.map((row: any) => ({
-      book_id: row.book_id,
-      title: row.title,
-      author: row.author,
-      scores: JSON.parse(row.profile_json),
-      description: row.description,
-    }));
+    const books = db.prepare(
+      'SELECT DISTINCT b.id, b.title, b.author FROM books b JOIN book_features bf ON b.id = bf.book_id'
+    ).all() as { id: number; title: string; author: string }[];
+
+    return books.map(book => {
+      const profile = getStyleProfileData(db, book.id);
+      return profile ? { ...profile, title: book.title, author: book.author } : null;
+    }).filter(Boolean);
+  });
+
+  ipcMain.handle('style:compare', (_event, bookIdA: number, bookIdB: number) => {
+    return computeSimilarity(db, bookIdA, bookIdB);
+  });
+
+  ipcMain.handle('style:getFeatureRegistry', () => {
+    return db.prepare('SELECT * FROM feature_registry ORDER BY category, feature_name').all();
   });
 
   // Usage / cost tracking
@@ -314,4 +331,34 @@ function registerIpcHandlers() {
       'SELECT bt.book_id, t.id, t.name FROM book_tags bt JOIN tags t ON bt.tag_id = t.id ORDER BY t.name'
     ).all();
   });
+}
+
+// Helper to build style profile data from new tables
+function getStyleProfileData(db: ReturnType<typeof getDatabase>, bookId: number) {
+  const features = db.prepare('SELECT feature_name, feature_value FROM book_features WHERE book_id = ?').all(bookId) as {
+    feature_name: string;
+    feature_value: number;
+  }[];
+
+  if (features.length === 0) return null;
+
+  const featureMap: Record<string, number> = {};
+  for (const f of features) featureMap[f.feature_name] = f.feature_value;
+
+  const ngrams = db.prepare('SELECT ngram, frequency FROM book_char_ngrams WHERE book_id = ?').all(bookId) as {
+    ngram: string;
+    frequency: number;
+  }[];
+
+  const ngramMap: Record<string, number> = {};
+  for (const ng of ngrams) ngramMap[ng.ngram] = ng.frequency;
+
+  const zScores = getBookZScores(db, bookId);
+
+  return {
+    book_id: bookId,
+    features: featureMap,
+    charNgrams: ngramMap,
+    zScores,
+  };
 }

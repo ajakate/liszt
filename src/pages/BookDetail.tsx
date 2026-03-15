@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile, UsageInfo, Tag } from '../types';
-
+import { Book, AnalysisResult, StyleProfile, UsageInfo, Tag, FeatureEntry } from '../types';
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -21,6 +20,7 @@ export default function BookDetail() {
   const [book, setBook] = useState<Book | null>(null);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
+  const [featureRegistry, setFeatureRegistry] = useState<FeatureEntry[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingStyle, setGeneratingStyle] = useState(false);
   const [error, setError] = useState('');
@@ -34,13 +34,14 @@ export default function BookDetail() {
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData, estimate, tags, bTags] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate, tags, bTags, registry] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
       window.api.estimateCost(bookId),
       window.api.getTags(),
       window.api.getBookTags(bookId),
+      window.api.getFeatureRegistry(),
     ]);
     setBook(bookData);
     setResults(analysisData);
@@ -48,6 +49,7 @@ export default function BookDetail() {
     setEstimatedCost(estimate);
     setAllTags(tags);
     setBookTags(bTags);
+    setFeatureRegistry(registry);
   }
 
   async function toggleTag(tagId: number) {
@@ -183,12 +185,15 @@ export default function BookDetail() {
         </div>
       )}
 
-      {styleProfile && (
+      {styleProfile && featureRegistry.length > 0 && (
         <div className="section">
-          <h3>Writing Style Profile</h3>
+          <h3>Writing Style Fingerprint</h3>
           <div className="card">
-            <p style={{ marginBottom: 16, lineHeight: 1.6 }}>{styleProfile.description}</p>
-            <StyleBars scores={styleProfile.scores} />
+            <StyleBars
+              features={styleProfile.features}
+              zScores={styleProfile.zScores}
+              registry={featureRegistry}
+            />
           </div>
         </div>
       )}

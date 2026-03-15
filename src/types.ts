@@ -30,31 +30,24 @@ export interface UsageInfo {
   model: string;
 }
 
-export interface StyleScores {
-  sentence_length_mean: number;
-  sentence_length_variance: number;
-  paragraph_length: number;
-  vocabulary_richness: number;
-  hapax_ratio: number;
-  function_word_density: number;
-  dialogue_ratio: number;
-  adverb_density: number;
-  em_dash_frequency: number;
-  exclamation_frequency: number;
-  semicolon_frequency: number;
-  vocabulary_commonality: number;
-  latinate_ratio: number;
-  said_bookism_ratio: number;
-  intensifier_density: number;
-  simile_density: number;
+export interface FeatureEntry {
+  feature_name: string;
+  category: string;
+  description: string;
 }
 
 export interface StyleProfile {
   book_id: number;
   title?: string;
   author?: string;
-  scores: StyleScores;
-  description: string;
+  features: Record<string, number>;
+  zScores: Record<string, number>;
+  charNgrams: Record<string, number>;
+}
+
+export interface StyleComparison {
+  overall: number;
+  byCategory: Record<string, number>;
 }
 
 export interface Tag {
@@ -90,6 +83,8 @@ declare global {
       generateStyleProfile: (bookId: number) => Promise<StyleProfile>;
       getStyleProfile: (bookId: number) => Promise<StyleProfile | null>;
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
+      compareStyles: (bookIdA: number, bookIdB: number) => Promise<StyleComparison>;
+      getFeatureRegistry: () => Promise<FeatureEntry[]>;
       getTotalCost: () => Promise<number>;
       estimateCost: (bookId: number) => Promise<number>;
       getTags: () => Promise<Tag[]>;

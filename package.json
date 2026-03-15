@@ -1,6 +1,6 @@
 {
   "name": "liszt",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Why waste your time?",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "adm-zip": "^0.5.16",
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.0.0",
+    "compromise": "^14.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.0"
