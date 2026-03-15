@@ -53,6 +53,9 @@
         }
       ],
       "icon": "assets/icon.icns"
+    },
+    "dmg": {
+      "format": "UDZO"
     }
   }
 }
