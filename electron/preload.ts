@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('api', {
   getAllStyleProfiles: () => ipcRenderer.invoke('style:getAllProfiles'),
   compareStyles: (bookIdA: number, bookIdB: number) => ipcRenderer.invoke('style:compare', bookIdA, bookIdB),
   getFeatureRegistry: () => ipcRenderer.invoke('style:getFeatureRegistry'),
+  getTopStyleMatches: (bookId: number, limit?: number) => ipcRenderer.invoke('style:topMatches', bookId, limit),
 
   // Usage
   getTotalCost: () => ipcRenderer.invoke('usage:getTotalCost'),

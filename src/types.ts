@@ -50,6 +50,14 @@ export interface StyleComparison {
   byCategory: Record<string, number>;
 }
 
+export interface StyleMatch {
+  book_id: number;
+  title: string;
+  author: string;
+  rating: number | null;
+  similarity: number;
+}
+
 export interface Tag {
   id: number;
   name: string;
@@ -85,6 +93,7 @@ declare global {
       getAllStyleProfiles: () => Promise<StyleProfile[]>;
       compareStyles: (bookIdA: number, bookIdB: number) => Promise<StyleComparison>;
       getFeatureRegistry: () => Promise<FeatureEntry[]>;
+      getTopStyleMatches: (bookId: number, limit?: number) => Promise<StyleMatch[]>;
       getTotalCost: () => Promise<number>;
       estimateCost: (bookId: number) => Promise<number>;
       getTags: () => Promise<Tag[]>;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile, UsageInfo, Tag, FeatureEntry } from '../types';
+import { Book, AnalysisResult, StyleProfile, StyleMatch, UsageInfo, Tag, FeatureEntry } from '../types';
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -28,13 +28,14 @@ export default function BookDetail() {
   const [lastAnalysisCost, setLastAnalysisCost] = useState<UsageInfo | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [bookTags, setBookTags] = useState<Tag[]>([]);
+  const [styleMatches, setStyleMatches] = useState<StyleMatch[]>([]);
 
   useEffect(() => {
     loadData();
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData, estimate, tags, bTags, registry] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate, tags, bTags, registry, matches] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
@@ -42,6 +43,7 @@ export default function BookDetail() {
       window.api.getTags(),
       window.api.getBookTags(bookId),
       window.api.getFeatureRegistry(),
+      window.api.getTopStyleMatches(bookId),
     ]);
     setBook(bookData);
     setResults(analysisData);
@@ -50,6 +52,7 @@ export default function BookDetail() {
     setAllTags(tags);
     setBookTags(bTags);
     setFeatureRegistry(registry);
+    setStyleMatches(matches);
   }
 
   async function toggleTag(tagId: number) {
@@ -167,6 +170,32 @@ export default function BookDetail() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {styleMatches.length > 0 && (
+        <div className="section">
+          <h3>Most Similar in Library</h3>
+          {styleMatches.map((m) => (
+            <Link key={m.book_id} to={`/book/${m.book_id}`} style={{ textDecoration: 'none' }}>
+              <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ color: '#e94560', fontWeight: 500 }}>{m.title}</span>
+                  <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>{m.author}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {m.rating !== null && (
+                    <span style={{ color: '#888', fontSize: 13 }}>
+                      {m.rating === 0 ? 'DNF' : `${m.rating}/10`}
+                    </span>
+                  )}
+                  <span style={{ color: '#e94560', fontWeight: 600 }}>
+                    {Math.round(m.similarity * 100)}%
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 

@@ -275,6 +275,20 @@ function registerIpcHandlers() {
     return computeSimilarity(db, bookIdA, bookIdB);
   });
 
+  ipcMain.handle('style:topMatches', (_event, bookId: number, limit: number = 3) => {
+    const otherBooks = db.prepare(
+      'SELECT DISTINCT b.id, b.title, b.author, b.rating FROM books b JOIN book_features bf ON b.id = bf.book_id WHERE b.id != ?'
+    ).all(bookId) as { id: number; title: string; author: string; rating: number | null }[];
+
+    const scored = otherBooks.map(book => {
+      const sim = computeSimilarity(db, bookId, book.id);
+      return { book_id: book.id, title: book.title, author: book.author, rating: book.rating, similarity: sim.overall };
+    });
+
+    scored.sort((a, b) => b.similarity - a.similarity);
+    return scored.slice(0, limit);
+  });
+
   ipcMain.handle('style:getFeatureRegistry', () => {
     return db.prepare('SELECT * FROM feature_registry ORDER BY category, feature_name').all();
   });
