@@ -22,7 +22,7 @@ export default function BookDetail() {
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
   const [featureRegistry, setFeatureRegistry] = useState<FeatureEntry[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
-  const [generatingStyle, setGeneratingStyle] = useState(false);
+
   const [error, setError] = useState('');
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [lastAnalysisCost, setLastAnalysisCost] = useState<UsageInfo | null>(null);
@@ -77,18 +77,6 @@ export default function BookDetail() {
     }
   }
 
-  async function handleStyleProfile() {
-    setGeneratingStyle(true);
-    setError('');
-    try {
-      const result = await window.api.generateStyleProfile(bookId);
-      setStyleProfile(result);
-    } catch (e: any) {
-      setError(e.message || 'Style analysis failed');
-    } finally {
-      setGeneratingStyle(false);
-    }
-  }
 
   async function handleRating(rating: number | null) {
     await window.api.setRating(bookId, rating);
@@ -159,10 +147,7 @@ export default function BookDetail() {
         <button onClick={handleAnalyze} disabled={analyzing}>
           {analyzing ? 'Analyzing...' : results.length > 0 ? 'Re-analyze' : 'Analyze Book'}
         </button>
-        <button onClick={handleStyleProfile} disabled={generatingStyle} className="secondary">
-          {generatingStyle ? 'Computing...' : styleProfile ? 'Recompute Style' : 'Compute Style Profile'}
-        </button>
-        <button onClick={handleDelete} className="danger">Delete</button>
+<button onClick={handleDelete} className="danger">Delete</button>
       </div>
 
       {lastAnalysisCost && (
