@@ -58,7 +58,7 @@ export default function Compare() {
         <>
           <p style={{ color: '#888', marginBottom: 16 }}>Select two books to compare:</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-            {profiles.map((p) => (
+            {[...profiles].sort((a, b) => (a.title || '').localeCompare(b.title || '')).map((p) => (
               <button
                 key={p.book_id}
                 onClick={() => toggleSelect(p.book_id)}
