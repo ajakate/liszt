@@ -40,7 +40,7 @@ function extractJSON(text: string): string {
   }
   // Find the first [ or { and its matching closing bracket
   const start = s.search(/[\[{]/);
-  if (start === -1) throw new Error('No JSON found in response');
+  if (start === -1) throw new Error(`No JSON found in response: ${s.substring(0, 200)}`);
   const openChar = s[start];
   const closeChar = openChar === '[' ? ']' : '}';
   let depth = 0;
@@ -76,6 +76,10 @@ export async function analyzeBook(
 
   const questionsFormatted = questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
 
+  // Truncate text to ~100k chars (~25k tokens) to stay within context limits
+  const maxChars = 100_000;
+  const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '\n\n[Text truncated]' : text;
+
   const response = await client.messages.create({
     model,
     max_tokens: 4096,
@@ -87,17 +91,24 @@ export async function analyzeBook(
 Questions:
 ${questionsFormatted}
 
-Respond in JSON format as an array of objects with "question" and "answer" fields. Example:
+Respond ONLY with a JSON array of objects with "question" and "answer" fields. No other text. Example:
 [{"question": "Does an animal die?", "answer": "Yes, in chapter 3..."}]
 
 Book text:
-${text}`,
+${truncatedText}`,
       },
     ],
   });
 
+  console.log('--- Claude API Response ---');
+  console.log('stop_reason:', response.stop_reason);
+  console.log('content:', JSON.stringify(response.content, null, 2));
+  console.log('usage:', JSON.stringify(response.usage, null, 2));
+  console.log('--- End Response ---');
+
   const content = response.content[0];
   if (content.type !== 'text') throw new Error('Unexpected response type');
+  if (response.stop_reason === 'max_tokens') throw new Error('Response was truncated. Try waiting a few minutes, using fewer questions or a shorter book.');
 
   const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
 
