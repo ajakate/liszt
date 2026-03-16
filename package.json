@@ -1,6 +1,6 @@
 {
   "name": "liszt",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Why waste your time?",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -43,15 +43,7 @@
       "node_modules/better-sqlite3/**"
     ],
     "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
+      "target": "dmg",
       "icon": "assets/icon.icns"
     },
     "dmg": {
