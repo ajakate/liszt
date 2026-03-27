@@ -28,14 +28,14 @@ export default function Library() {
   const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'created_at'));
   const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'desc'));
   const [filterTags, setFilterTags] = useState<Set<string>>(() => new Set(loadFilter<string[]>('filterTags', [])));
-  const [showDNF, setShowDNF] = useState<boolean | null>(() => loadFilter('showDNF', null));
+  const [statusFilter, setStatusFilter] = useState<string>(() => loadFilter('statusFilter', 'all'));
   const [search, setSearch] = useState(() => loadFilter('search', ''));
   const navigate = useNavigate();
 
   useEffect(() => { saveFilter('sortKey', sortKey); }, [sortKey]);
   useEffect(() => { saveFilter('sortDir', sortDir); }, [sortDir]);
   useEffect(() => { saveFilter('filterTags', Array.from(filterTags)); }, [filterTags]);
-  useEffect(() => { saveFilter('showDNF', showDNF); }, [showDNF]);
+  useEffect(() => { saveFilter('statusFilter', statusFilter); }, [statusFilter]);
   useEffect(() => { saveFilter('search', search); }, [search]);
 
   useEffect(() => {
@@ -97,11 +97,15 @@ export default function Library() {
       );
     }
 
-    // Filter by DNF
-    if (showDNF === true) {
+    // Filter by status
+    if (statusFilter === 'dnf') {
       filtered = filtered.filter(b => b.rating === 0);
-    } else if (showDNF === false) {
+    } else if (statusFilter === 'no-dnf') {
       filtered = filtered.filter(b => b.rating !== 0);
+    } else if (statusFilter === 'unread') {
+      filtered = filtered.filter(b => b.rating === null || b.rating === undefined);
+    } else if (statusFilter === 'read') {
+      filtered = filtered.filter(b => b.rating !== null && b.rating !== undefined && b.rating > 0);
     }
 
     // Filter by tags (book must have at least one selected tag)
@@ -142,13 +146,13 @@ export default function Library() {
     });
 
     return sorted;
-  }, [books, bookTags, sortKey, sortDir, filterTags, showDNF, search]);
+  }, [books, bookTags, sortKey, sortDir, filterTags, statusFilter, search]);
 
-  const hasActiveFilters = search !== '' || showDNF !== null || filterTags.size > 0 || sortKey !== 'created_at' || sortDir !== 'desc';
+  const hasActiveFilters = search !== '' || statusFilter !== 'all' || filterTags.size > 0 || sortKey !== 'created_at' || sortDir !== 'desc';
 
   function resetFilters() {
     setSearch('');
-    setShowDNF(null);
+    setStatusFilter('all');
     setFilterTags(new Set());
     setSortKey('created_at');
     setSortDir('desc');
@@ -198,13 +202,12 @@ export default function Library() {
               style={{ maxWidth: 250 }}
             />
             <select
-              value={showDNF === null ? 'all' : showDNF ? 'dnf' : 'no-dnf'}
-              onChange={e => {
-                const v = e.target.value;
-                setShowDNF(v === 'all' ? null : v === 'dnf');
-              }}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
             >
               <option value="all">All books</option>
+              <option value="read">Read</option>
+              <option value="unread">Unread</option>
               <option value="dnf">DNF only</option>
               <option value="no-dnf">Exclude DNF</option>
             </select>
