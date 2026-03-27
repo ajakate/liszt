@@ -18,6 +18,7 @@ export default function Library() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [showDNF, setShowDNF] = useState<boolean | null>(null); // null = all, true = DNF only, false = exclude DNF
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,6 +64,14 @@ export default function Library() {
   const filteredAndSorted = useMemo(() => {
     let filtered = books;
 
+    // Filter by search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(b =>
+        b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
+      );
+    }
+
     // Filter by DNF
     if (showDNF === true) {
       filtered = filtered.filter(b => b.rating === 0);
@@ -105,7 +114,7 @@ export default function Library() {
     });
 
     return sorted;
-  }, [books, bookTags, sortKey, sortDir, filterTags, showDNF]);
+  }, [books, bookTags, sortKey, sortDir, filterTags, showDNF, search]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -137,6 +146,13 @@ export default function Library() {
       ) : (
         <>
           <div className="library-filters">
+            <input
+              type="text"
+              placeholder="Search by title or author..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ maxWidth: 250 }}
+            />
             <select
               value={showDNF === null ? 'all' : showDNF ? 'dnf' : 'no-dnf'}
               onChange={e => {
