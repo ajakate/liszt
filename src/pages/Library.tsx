@@ -10,16 +10,33 @@ function formatPageCount(wordCount: number): string {
   return `~${pages} pages`;
 }
 
+function loadFilter<T>(key: string, fallback: T): T {
+  try {
+    const v = sessionStorage.getItem(`library:${key}`);
+    return v !== null ? JSON.parse(v) : fallback;
+  } catch { return fallback; }
+}
+
+function saveFilter(key: string, value: any) {
+  sessionStorage.setItem(`library:${key}`, JSON.stringify(value));
+}
+
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookTags, setBookTags] = useState<Record<number, { id: number; name: string }[]>>({});
   const [loading, setLoading] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>('title');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
-  const [showDNF, setShowDNF] = useState<boolean | null>(null); // null = all, true = DNF only, false = exclude DNF
-  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'title'));
+  const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'asc'));
+  const [filterTags, setFilterTags] = useState<Set<string>>(() => new Set(loadFilter<string[]>('filterTags', [])));
+  const [showDNF, setShowDNF] = useState<boolean | null>(() => loadFilter('showDNF', null));
+  const [search, setSearch] = useState(() => loadFilter('search', ''));
   const navigate = useNavigate();
+
+  useEffect(() => { saveFilter('sortKey', sortKey); }, [sortKey]);
+  useEffect(() => { saveFilter('sortDir', sortDir); }, [sortDir]);
+  useEffect(() => { saveFilter('filterTags', Array.from(filterTags)); }, [filterTags]);
+  useEffect(() => { saveFilter('showDNF', showDNF); }, [showDNF]);
+  useEffect(() => { saveFilter('search', search); }, [search]);
 
   useEffect(() => {
     loadBooks();
