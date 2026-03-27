@@ -52,6 +52,14 @@ export default function Library() {
     }
   }
 
+  const stats = useMemo(() => {
+    const total = books.length;
+    const dnf = books.filter(b => b.rating === 0).length;
+    const rated = books.filter(b => b.rating !== null && b.rating > 0).length;
+    const unrated = total - dnf - rated;
+    return { total, dnf, rated, unrated };
+  }, [books]);
+
   // Collect all unique tags for the filter dropdown
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -138,6 +146,12 @@ export default function Library() {
           {loading ? 'Importing...' : 'Import Book'}
         </button>
       </div>
+
+      {books.length > 0 && (
+        <p style={{ color: '#666', fontSize: 13, marginBottom: 16 }}>
+          {stats.total} books — {stats.rated} read, {stats.unrated} unread, {stats.dnf} DNF
+        </p>
+      )}
 
       {books.length === 0 ? (
         <div className="empty-state">
