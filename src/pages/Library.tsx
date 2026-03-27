@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Book } from '../types';
 
-type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags';
+type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 function formatPageCount(wordCount: number): string {
@@ -25,8 +25,8 @@ export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookTags, setBookTags] = useState<Record<number, { id: number; name: string }[]>>({});
   const [loading, setLoading] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'title'));
-  const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'asc'));
+  const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'created_at'));
+  const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'desc'));
   const [filterTags, setFilterTags] = useState<Set<string>>(() => new Set(loadFilter<string[]>('filterTags', [])));
   const [showDNF, setShowDNF] = useState<boolean | null>(() => loadFilter('showDNF', null));
   const [search, setSearch] = useState(() => loadFilter('search', ''));
@@ -134,12 +134,25 @@ export default function Library() {
           cmp = ta.localeCompare(tb);
           break;
         }
+        case 'created_at':
+          cmp = (a.created_at || '').localeCompare(b.created_at || '');
+          break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
     return sorted;
   }, [books, bookTags, sortKey, sortDir, filterTags, showDNF, search]);
+
+  const hasActiveFilters = search !== '' || showDNF !== null || filterTags.size > 0 || sortKey !== 'created_at' || sortDir !== 'desc';
+
+  function resetFilters() {
+    setSearch('');
+    setShowDNF(null);
+    setFilterTags(new Set());
+    setSortKey('created_at');
+    setSortDir('desc');
+  }
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -212,6 +225,12 @@ export default function Library() {
                 </button>
               ))}
             </div>
+
+            {hasActiveFilters && (
+              <button className="secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
           </div>
 
           <table className="library-table">
@@ -222,6 +241,7 @@ export default function Library() {
                 <th onClick={() => handleSort('rating')}>Rating{sortIndicator('rating')}</th>
                 <th onClick={() => handleSort('word_count')}>Words{sortIndicator('word_count')}</th>
                 <th onClick={() => handleSort('tags')}>Tags{sortIndicator('tags')}</th>
+                <th onClick={() => handleSort('created_at')}>Added{sortIndicator('created_at')}</th>
               </tr>
             </thead>
             <tbody>
@@ -245,6 +265,9 @@ export default function Library() {
                     {bookTags[book.id]?.map(tag => (
                       <span key={tag.id} className="tag-badge">{tag.name}</span>
                     ))}
+                  </td>
+                  <td style={{ color: '#888', fontSize: 13 }}>
+                    {book.created_at ? new Date(book.created_at).toLocaleDateString() : '—'}
                   </td>
                 </tr>
               ))}
