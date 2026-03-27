@@ -86,6 +86,7 @@ declare global {
       getBook: (id: number) => Promise<Book>;
       deleteBook: (id: number) => Promise<void>;
       setRating: (id: number, rating: number | null) => Promise<void>;
+      updateBookMeta: (id: number, title: string, author: string) => Promise<void>;
       runAnalysis: (bookId: number) => Promise<{ results: AnalysisResult[]; usage: UsageInfo }>;
       getAnalysisResults: (bookId: number) => Promise<AnalysisResult[]>;
       generateStyleProfile: (bookId: number) => Promise<StyleProfile>;

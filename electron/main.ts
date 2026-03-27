@@ -25,6 +25,7 @@ function createWindow() {
 
   if (process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173');
+    // mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist-renderer', 'index.html'));
   }
@@ -209,6 +210,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('books:setRating', (_event, id: number, rating: number | null) => {
     db.prepare('UPDATE books SET rating = ? WHERE id = ?').run(rating, id);
+  });
+
+  ipcMain.handle('books:updateMeta', (_event, id: number, title: string, author: string) => {
+    db.prepare('UPDATE books SET title = ?, author = ? WHERE id = ?').run(title, author, id);
   });
 
   // Analysis

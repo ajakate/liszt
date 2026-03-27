@@ -29,6 +29,9 @@ export default function BookDetail() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [bookTags, setBookTags] = useState<Tag[]>([]);
   const [styleMatches, setStyleMatches] = useState<StyleMatch[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
 
   useEffect(() => {
     loadData();
@@ -86,6 +89,12 @@ export default function BookDetail() {
     setBook((prev) => prev ? { ...prev, rating } : prev);
   }
 
+  async function handleSaveMeta() {
+    await window.api.updateBookMeta(bookId, editTitle.trim(), editAuthor.trim());
+    setBook(prev => prev ? { ...prev, title: editTitle.trim(), author: editAuthor.trim() } : prev);
+    setEditing(false);
+  }
+
   async function handleDelete() {
     const confirmed = await window.api.showConfirm(`Delete "${book?.title}"? This cannot be undone.`);
     if (confirmed) {
@@ -100,8 +109,42 @@ export default function BookDetail() {
     <div>
       <Link to="/" className="back-link">Back to Library</Link>
 
-      <h2>{book.title}</h2>
-      <p style={{ color: '#888', marginBottom: 4 }}>{book.author}</p>
+      {editing ? (
+        <div style={{ marginBottom: 12 }}>
+          <div className="form-row">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              placeholder="Title"
+            />
+          </div>
+          <div className="form-row">
+            <input
+              type="text"
+              value={editAuthor}
+              onChange={e => setEditAuthor(e.target.value)}
+              placeholder="Author"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleSaveMeta} disabled={!editTitle.trim()}>Save</button>
+            <button className="secondary" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <h2>{book.title}</h2>
+            <button
+              className="secondary"
+              style={{ padding: '2px 8px', fontSize: 12 }}
+              onClick={() => { setEditTitle(book.title); setEditAuthor(book.author); setEditing(true); }}
+            >Edit</button>
+          </div>
+          <p style={{ color: '#888', marginBottom: 4 }}>{book.author}</p>
+        </>
+      )}
       <p style={{ color: '#666', marginBottom: 12, fontSize: 13 }}>
         {book.word_count?.toLocaleString()} words ({formatPageCount(book.word_count || 0)})
       </p>

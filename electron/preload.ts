@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   getBook: (id: number) => ipcRenderer.invoke('books:get', id),
   deleteBook: (id: number) => ipcRenderer.invoke('books:delete', id),
   setRating: (id: number, rating: number | null) => ipcRenderer.invoke('books:setRating', id, rating),
+  updateBookMeta: (id: number, title: string, author: string) => ipcRenderer.invoke('books:updateMeta', id, title, author),
 
   // Analysis
   runAnalysis: (bookId: number) => ipcRenderer.invoke('analysis:run', bookId),
