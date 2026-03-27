@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book } from '../types';
+import { Book, Tag } from '../types';
 
 type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -24,6 +24,7 @@ function saveFilter(key: string, value: any) {
 export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookTags, setBookTags] = useState<Record<number, { id: number; name: string }[]>>({});
+  const [allTagsList, setAllTagsList] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'created_at'));
   const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'desc'));
@@ -43,11 +44,13 @@ export default function Library() {
   }, []);
 
   async function loadBooks() {
-    const [result, allBookTags] = await Promise.all([
+    const [result, allBookTags, tags] = await Promise.all([
       window.api.getBooks(),
       window.api.getAllBookTags(),
+      window.api.getTags(),
     ]);
     setBooks(result);
+    setAllTagsList(tags);
 
     const tagMap: Record<number, { id: number; name: string }[]> = {};
     for (const bt of allBookTags) {
@@ -67,6 +70,17 @@ export default function Library() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function toggleBookTag(bookId: number, tagId: number) {
+    const hasTag = bookTags[bookId]?.some(t => t.id === tagId);
+    if (hasTag) {
+      await window.api.removeTagFromBook(bookId, tagId);
+    } else {
+      await window.api.addTagToBook(bookId, tagId);
+    }
+    const updated = await window.api.getBookTags(bookId);
+    setBookTags(prev => ({ ...prev, [bookId]: updated }));
   }
 
   const stats = useMemo(() => {
@@ -264,10 +278,22 @@ export default function Library() {
                     <span className="word-count">{(book.word_count || 0).toLocaleString()}</span>
                     <span className="page-count">{formatPageCount(book.word_count || 0)}</span>
                   </td>
-                  <td>
-                    {bookTags[book.id]?.map(tag => (
-                      <span key={tag.id} className="tag-badge">{tag.name}</span>
-                    ))}
+                  <td onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {allTagsList.map(tag => {
+                        const active = bookTags[book.id]?.some(t => t.id === tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            className={`tag-btn${active ? ' tag-active' : ''}`}
+                            style={{ padding: '1px 8px', fontSize: 11 }}
+                            onClick={() => toggleBookTag(book.id, tag.id)}
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </td>
                   <td style={{ color: '#888', fontSize: 13 }}>
                     {book.created_at ? new Date(book.created_at).toLocaleDateString() : '—'}
