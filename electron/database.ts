@@ -180,6 +180,30 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 8,
+    description: 'Content fingerprint tags and scores',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE content_tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE content_scores (
+          book_id INTEGER NOT NULL,
+          tag_id INTEGER NOT NULL,
+          score INTEGER NOT NULL,
+          explanation TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY (book_id, tag_id),
+          FOREIGN KEY (book_id) REFERENCES books(id),
+          FOREIGN KEY (tag_id) REFERENCES content_tags(id)
+        );
+      `);
+    },
+  },
 ];
 
 function getSchemaVersion(db: Database.Database): number {

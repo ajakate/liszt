@@ -123,3 +123,76 @@ ${truncatedText}`,
   };
 }
 
+export interface ContentTagScore {
+  tag_id: number;
+  score: number;
+  explanation: string;
+}
+
+export async function scoreContentTags(
+  apiKey: string,
+  model: string,
+  title: string,
+  author: string,
+  text: string,
+  tags: { id: number; name: string; description: string }[]
+): Promise<{ scores: ContentTagScore[]; usage: UsageInfo }> {
+  const client = new Anthropic({ apiKey });
+
+  const tagsFormatted = tags.map(t => `- "${t.name}": ${t.description}`).join('\n');
+
+  const maxChars = 100_000;
+  const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '\n\n[Text truncated]' : text;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: `You are analyzing the book "${title}" by ${author}. For each of the following content tags, rate how strongly this book matches on a scale from 0 to 10, where 0 means "not present at all" and 10 means "this is a central element of the book".
+
+Content tags:
+${tagsFormatted}
+
+Respond ONLY with a JSON array of objects with "name", "score", and "explanation" fields. The explanation should be 1-2 sentences with specific examples from the text. No other text. Example:
+[{"name": "enemies to lovers trope", "score": 7, "explanation": "The two main characters start as rivals competing for the throne, but by chapter 12 their antagonism gives way to romance."}]
+
+Book text:
+${truncatedText}`,
+      },
+    ],
+  });
+
+  console.log('--- Claude Content Scoring Response ---');
+  console.log('stop_reason:', response.stop_reason);
+  console.log('content:', JSON.stringify(response.content, null, 2));
+  console.log('--- End Response ---');
+
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error('Unexpected response type');
+  if (response.stop_reason === 'max_tokens') throw new Error('Response was truncated.');
+
+  const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
+  const parsed = JSON.parse(extractJSON(content.text)) as { name: string; score: number; explanation: string }[];
+
+  // Map results back to tag IDs
+  const scores: ContentTagScore[] = [];
+  for (const result of parsed) {
+    const tag = tags.find(t => t.name === result.name);
+    if (tag) {
+      scores.push({ tag_id: tag.id, score: Math.max(0, Math.min(10, Math.round(result.score))), explanation: result.explanation || '' });
+    }
+  }
+
+  return {
+    scores,
+    usage: {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      cost,
+      model,
+    },
+  };
+}
+

@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, nativeImage, Menu } from 'electron
 import * as path from 'path';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
-import { analyzeBook, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
+import { analyzeBook, scoreContentTags, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
 import { computeAllFeatures, getFeatureRegistry } from './stylometrics';
 import { recomputeFeatureStatistics, getBookZScores, computeSimilarity } from './feature-stats';
 
@@ -201,6 +201,7 @@ function registerIpcHandlers() {
     db.prepare('DELETE FROM book_features WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM book_char_ngrams WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM book_tags WHERE book_id = ?').run(id);
+    db.prepare('DELETE FROM content_scores WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM usage_log WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM style_profiles WHERE book_id = ?').run(id);
@@ -243,7 +244,25 @@ function registerIpcHandlers() {
       bookId, 'analysis', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
     );
 
-    return { results, usage };
+    // Also score content tags if any exist
+    const contentTags = db.prepare('SELECT * FROM content_tags').all() as { id: number; name: string; description: string }[];
+    let contentUsage = null;
+    if (contentTags.length > 0) {
+      const { scores, usage: cUsage } = await scoreContentTags(apiKey, model, book.title, book.author, book.text_content, contentTags);
+
+      db.prepare('DELETE FROM content_scores WHERE book_id = ?').run(bookId);
+      const insertScore = db.prepare('INSERT OR REPLACE INTO content_scores (book_id, tag_id, score, explanation) VALUES (?, ?, ?, ?)');
+      for (const s of scores) {
+        insertScore.run(bookId, s.tag_id, s.score, s.explanation);
+      }
+
+      db.prepare('INSERT INTO usage_log (book_id, operation, model, input_tokens, output_tokens, cost) VALUES (?, ?, ?, ?, ?, ?)').run(
+        bookId, 'content_scoring', cUsage.model, cUsage.input_tokens, cUsage.output_tokens, cUsage.cost
+      );
+      contentUsage = cUsage;
+    }
+
+    return { results, usage, contentUsage };
   });
 
   ipcMain.handle('analysis:getResults', (_event, bookId: number) => {
@@ -349,6 +368,31 @@ function registerIpcHandlers() {
     return db.prepare(
       'SELECT bt.book_id, t.id, t.name FROM book_tags bt JOIN tags t ON bt.tag_id = t.id ORDER BY t.name'
     ).all();
+  });
+
+  // Content tags
+  ipcMain.handle('contentTags:getAll', () => {
+    return db.prepare('SELECT * FROM content_tags ORDER BY name').all();
+  });
+
+  ipcMain.handle('contentTags:create', (_event, name: string, description: string) => {
+    const result = db.prepare('INSERT INTO content_tags (name, description) VALUES (?, ?)').run(name.trim(), description.trim());
+    return result.lastInsertRowid;
+  });
+
+  ipcMain.handle('contentTags:update', (_event, id: number, name: string, description: string) => {
+    db.prepare('UPDATE content_tags SET name = ?, description = ? WHERE id = ?').run(name.trim(), description.trim(), id);
+  });
+
+  ipcMain.handle('contentTags:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM content_scores WHERE tag_id = ?').run(id);
+    db.prepare('DELETE FROM content_tags WHERE id = ?').run(id);
+  });
+
+  ipcMain.handle('contentScores:getForBook', (_event, bookId: number) => {
+    return db.prepare(
+      'SELECT cs.score, cs.explanation, ct.id as tag_id, ct.name, ct.description FROM content_scores cs JOIN content_tags ct ON cs.tag_id = ct.id WHERE cs.book_id = ? ORDER BY ct.name'
+    ).all(bookId);
   });
 }
 

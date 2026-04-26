@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile, StyleMatch, UsageInfo, Tag, FeatureEntry } from '../types';
+import { Book, AnalysisResult, StyleProfile, StyleMatch, ContentScore, UsageInfo, Tag, FeatureEntry } from '../types';
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -29,6 +29,7 @@ export default function BookDetail() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [bookTags, setBookTags] = useState<Tag[]>([]);
   const [styleMatches, setStyleMatches] = useState<StyleMatch[]>([]);
+  const [contentScores, setContentScores] = useState<ContentScore[]>([]);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editAuthor, setEditAuthor] = useState('');
@@ -38,7 +39,7 @@ export default function BookDetail() {
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData, estimate, tags, bTags, registry, matches] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate, tags, bTags, registry, matches, scores] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
@@ -47,6 +48,7 @@ export default function BookDetail() {
       window.api.getBookTags(bookId),
       window.api.getFeatureRegistry(),
       window.api.getTopStyleMatches(bookId),
+      window.api.getContentScores(bookId),
     ]);
     setBook(bookData);
     setResults(analysisData);
@@ -56,6 +58,7 @@ export default function BookDetail() {
     setBookTags(bTags);
     setFeatureRegistry(registry);
     setStyleMatches(matches);
+    setContentScores(scores);
   }
 
   async function toggleTag(tagId: number) {
@@ -76,6 +79,8 @@ export default function BookDetail() {
       const { results: newResults, usage } = await window.api.runAnalysis(bookId);
       setResults(newResults);
       setLastAnalysisCost(usage);
+      const scores = await window.api.getContentScores(bookId);
+      setContentScores(scores);
     } catch (e: any) {
       setError(e.message || 'Analysis failed');
     } finally {
@@ -210,6 +215,23 @@ export default function BookDetail() {
               <div key={r.id} className="analysis-result">
                 <div className="question">{r.question}</div>
                 <div className="answer">{r.answer}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {contentScores.length > 0 && (
+        <div className="section">
+          <h3>Content Fingerprint</h3>
+          <div className="card">
+            {contentScores.map(cs => (
+              <div key={cs.tag_id} className="analysis-result">
+                <div className="question">
+                  {cs.name}
+                  <span style={{ color: '#e94560', fontWeight: 600, marginLeft: 8 }}>{cs.score}/10</span>
+                </div>
+                {cs.explanation && <div className="answer">{cs.explanation}</div>}
               </div>
             ))}
           </div>

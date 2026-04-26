@@ -50,6 +50,13 @@ contextBridge.exposeInMainWorld('api', {
   removeTagFromBook: (bookId: number, tagId: number) => ipcRenderer.invoke('tags:removeFromBook', bookId, tagId),
   getAllBookTags: () => ipcRenderer.invoke('tags:getAllBookTags'),
 
+  // Content tags
+  getContentTags: () => ipcRenderer.invoke('contentTags:getAll'),
+  createContentTag: (name: string, description: string) => ipcRenderer.invoke('contentTags:create', name, description),
+  updateContentTag: (id: number, name: string, description: string) => ipcRenderer.invoke('contentTags:update', id, name, description),
+  deleteContentTag: (id: number) => ipcRenderer.invoke('contentTags:delete', id),
+  getContentScores: (bookId: number) => ipcRenderer.invoke('contentScores:getForBook', bookId),
+
   // Dialogs
   showConfirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
 });

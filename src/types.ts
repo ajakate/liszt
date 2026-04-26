@@ -58,6 +58,21 @@ export interface StyleMatch {
   similarity: number;
 }
 
+export interface ContentTag {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface ContentScore {
+  tag_id: number;
+  name: string;
+  description: string;
+  score: number;
+  explanation: string;
+}
+
 export interface Tag {
   id: number;
   name: string;
@@ -95,6 +110,11 @@ declare global {
       compareStyles: (bookIdA: number, bookIdB: number) => Promise<StyleComparison>;
       getFeatureRegistry: () => Promise<FeatureEntry[]>;
       getTopStyleMatches: (bookId: number, limit?: number) => Promise<StyleMatch[]>;
+      getContentTags: () => Promise<ContentTag[]>;
+      createContentTag: (name: string, description: string) => Promise<number>;
+      updateContentTag: (id: number, name: string, description: string) => Promise<void>;
+      deleteContentTag: (id: number) => Promise<void>;
+      getContentScores: (bookId: number) => Promise<ContentScore[]>;
       getTotalCost: () => Promise<number>;
       estimateCost: (bookId: number) => Promise<number>;
       getTags: () => Promise<Tag[]>;
