@@ -12,7 +12,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function Compare() {
   const [profiles, setProfiles] = useState<StyleProfile[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selectedA, setSelectedA] = useState<number | null>(null);
+  const [selectedB, setSelectedB] = useState<number | null>(null);
+  const [searchA, setSearchA] = useState('');
+  const [searchB, setSearchB] = useState('');
+  const [focusA, setFocusA] = useState(false);
+  const [focusB, setFocusB] = useState(false);
   const [comparison, setComparison] = useState<StyleComparison | null>(null);
   const [registry, setRegistry] = useState<FeatureEntry[]>([]);
   const [showExplainer, setShowExplainer] = useState(false);
@@ -28,23 +33,37 @@ export default function Compare() {
   }, []);
 
   useEffect(() => {
-    if (selected.length === 2) {
-      window.api.compareStyles(selected[0], selected[1])
+    if (selectedA !== null && selectedB !== null) {
+      window.api.compareStyles(selectedA, selectedB)
         .then(setComparison)
         .catch(console.error);
     } else {
       setComparison(null);
     }
-  }, [selected]);
+  }, [selectedA, selectedB]);
 
-  function toggleSelect(bookId: number) {
-    setSelected((prev) =>
-      prev.includes(bookId) ? prev.filter((id) => id !== bookId) : prev.length < 2 ? [...prev, bookId] : [prev[1], bookId]
-    );
+  const sorted = [...profiles].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+  function filterProfiles(search: string) {
+    if (!search) return sorted;
+    const q = search.toLowerCase();
+    return sorted.filter(p => (p.title || '').toLowerCase().includes(q) || (p.author || '').toLowerCase().includes(q));
   }
 
-  const profileA = profiles.find((p) => p.book_id === selected[0]);
-  const profileB = profiles.find((p) => p.book_id === selected[1]);
+  function selectA(p: StyleProfile) {
+    setSelectedA(p.book_id);
+    setSearchA(`${p.title} — ${p.author}`);
+    setFocusA(false);
+  }
+
+  function selectB(p: StyleProfile) {
+    setSelectedB(p.book_id);
+    setSearchB(`${p.title} — ${p.author}`);
+    setFocusB(false);
+  }
+
+  const profileA = profiles.find((p) => p.book_id === selectedA);
+  const profileB = profiles.find((p) => p.book_id === selectedB);
 
   return (
     <div>
@@ -56,17 +75,49 @@ export default function Compare() {
         </div>
       ) : (
         <>
-          <p style={{ color: '#888', marginBottom: 16 }}>Select two books to compare:</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-            {[...profiles].sort((a, b) => (a.title || '').localeCompare(b.title || '')).map((p) => (
-              <button
-                key={p.book_id}
-                onClick={() => toggleSelect(p.book_id)}
-                className={selected.includes(p.book_id) ? '' : 'secondary'}
-              >
-                {p.title}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <label style={{ color: '#888', fontSize: 13, marginBottom: 4, display: 'block' }}>Book A</label>
+              <input
+                type="text"
+                placeholder="Search by title or author..."
+                value={searchA}
+                onChange={e => { setSearchA(e.target.value); setSelectedA(null); setFocusA(true); }}
+                onFocus={() => setFocusA(true)}
+                onBlur={() => setTimeout(() => setFocusA(false), 150)}
+              />
+              {focusA && (
+                <div className="autocomplete-list">
+                  {filterProfiles(searchA).map(p => (
+                    <div key={p.book_id} className="autocomplete-item" onMouseDown={() => selectA(p)}>
+                      <span>{p.title}</span>
+                      <span style={{ color: '#888', fontSize: 12, marginLeft: 8 }}>{p.author}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <label style={{ color: '#888', fontSize: 13, marginBottom: 4, display: 'block' }}>Book B</label>
+              <input
+                type="text"
+                placeholder="Search by title or author..."
+                value={searchB}
+                onChange={e => { setSearchB(e.target.value); setSelectedB(null); setFocusB(true); }}
+                onFocus={() => setFocusB(true)}
+                onBlur={() => setTimeout(() => setFocusB(false), 150)}
+              />
+              {focusB && (
+                <div className="autocomplete-list">
+                  {filterProfiles(searchB).map(p => (
+                    <div key={p.book_id} className="autocomplete-item" onMouseDown={() => selectB(p)}>
+                      <span>{p.title}</span>
+                      <span style={{ color: '#888', fontSize: 12, marginLeft: 8 }}>{p.author}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {comparison && (
