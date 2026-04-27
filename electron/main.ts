@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, nativeImage, Menu } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
 import { analyzeBook, scoreContentTags, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
@@ -393,6 +394,50 @@ function registerIpcHandlers() {
     return db.prepare(
       'SELECT cs.score, cs.explanation, ct.id as tag_id, ct.name, ct.description FROM content_scores cs JOIN content_tags ct ON cs.tag_id = ct.id WHERE cs.book_id = ? ORDER BY ct.name'
     ).all(bookId);
+  });
+
+  // Database export/import
+  ipcMain.handle('db:export', async () => {
+    const dbPath = path.join(app.getPath('userData'), 'liszt.db');
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: 'liszt.db',
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+
+    // Checkpoint WAL to ensure all data is in the main file
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    fs.copyFileSync(dbPath, result.filePath);
+    return true;
+  });
+
+  ipcMain.handle('db:isDev', () => {
+    return !!(process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL);
+  });
+
+  ipcMain.handle('db:import', async () => {
+    const isDev = !!(process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL);
+    if (!isDev) throw new Error('Database import is only available in development mode.');
+
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || result.filePaths.length === 0) return false;
+
+    const dbPath = path.join(app.getPath('userData'), 'liszt.db');
+
+    // Close current DB, copy new one, then restart
+    db.close();
+    fs.copyFileSync(result.filePaths[0], dbPath);
+
+    // Remove WAL/SHM files if they exist from the old DB
+    try { fs.unlinkSync(dbPath + '-wal'); } catch {}
+    try { fs.unlinkSync(dbPath + '-shm'); } catch {}
+
+    app.relaunch();
+    app.exit(0);
+    return true;
   });
 }
 

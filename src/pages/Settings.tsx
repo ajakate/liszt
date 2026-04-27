@@ -7,12 +7,14 @@ export default function Settings() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [totalCost, setTotalCost] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
     window.api?.getApiKey().then(setApiKey).catch(console.error);
     window.api?.getModel().then(setModel).catch(console.error);
     window.api?.getAvailableModels().then(setModels).catch(console.error);
     window.api?.getTotalCost().then(setTotalCost).catch(console.error);
+    window.api?.isDev().then(setIsDev).catch(console.error);
   }, []);
 
   async function handleSaveKey() {
@@ -79,6 +81,21 @@ export default function Settings() {
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
         </select>
+      </div>
+
+      <div className="card">
+        <h3>Database</h3>
+        <p style={{ color: '#888', marginBottom: 12, fontSize: 13 }}>
+          Export your database as a SQLite file for backup or transfer.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => window.api.exportDb()}>Download Database</button>
+          {isDev && (
+            <button className="secondary" onClick={() => window.api.importDb()}>
+              Load Database
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

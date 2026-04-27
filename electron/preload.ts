@@ -57,6 +57,11 @@ contextBridge.exposeInMainWorld('api', {
   deleteContentTag: (id: number) => ipcRenderer.invoke('contentTags:delete', id),
   getContentScores: (bookId: number) => ipcRenderer.invoke('contentScores:getForBook', bookId),
 
+  // Database
+  exportDb: () => ipcRenderer.invoke('db:export'),
+  importDb: () => ipcRenderer.invoke('db:import'),
+  isDev: () => ipcRenderer.invoke('db:isDev'),
+
   // Dialogs
   showConfirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
 });

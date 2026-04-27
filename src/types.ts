@@ -125,6 +125,9 @@ declare global {
       addTagToBook: (bookId: number, tagId: number) => Promise<void>;
       removeTagFromBook: (bookId: number, tagId: number) => Promise<void>;
       getAllBookTags: () => Promise<{ book_id: number; id: number; name: string }[]>;
+      exportDb: () => Promise<boolean>;
+      importDb: () => Promise<boolean>;
+      isDev: () => Promise<boolean>;
       showConfirm: (message: string) => Promise<boolean>;
     };
   }
