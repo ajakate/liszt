@@ -139,14 +139,14 @@ export async function scoreContentTags(
 ): Promise<{ scores: ContentTagScore[]; usage: UsageInfo }> {
   const client = new Anthropic({ apiKey });
 
-  const tagsFormatted = tags.map(t => `- "${t.name}": ${t.description}`).join('\n');
-
   const maxChars = 100_000;
   const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '\n\n[Text truncated]' : text;
 
+  const tagsFormatted = tags.map(t => `- "${t.name}": ${t.description}`).join('\n');
+
   const response = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 16384,
     messages: [
       {
         role: 'user',
@@ -171,12 +171,11 @@ ${truncatedText}`,
 
   const content = response.content[0];
   if (content.type !== 'text') throw new Error('Unexpected response type');
-  if (response.stop_reason === 'max_tokens') throw new Error('Response was truncated.');
+  if (response.stop_reason === 'max_tokens') throw new Error('Response was truncated. Try reducing the number of content tags.');
 
   const cost = calculateCost(model, response.usage.input_tokens, response.usage.output_tokens);
   const parsed = JSON.parse(extractJSON(content.text)) as { name: string; score: number; explanation: string }[];
 
-  // Map results back to tag IDs
   const scores: ContentTagScore[] = [];
   for (const result of parsed) {
     const tag = tags.find(t => t.name === result.name);
