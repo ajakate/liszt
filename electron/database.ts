@@ -204,6 +204,35 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 9,
+    description: 'Context groups for scoping content fingerprints',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE context_groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE book_context_groups (
+          book_id INTEGER NOT NULL,
+          context_group_id INTEGER NOT NULL,
+          PRIMARY KEY (book_id, context_group_id),
+          FOREIGN KEY (book_id) REFERENCES books(id),
+          FOREIGN KEY (context_group_id) REFERENCES context_groups(id)
+        );
+
+        CREATE TABLE content_tag_context_groups (
+          content_tag_id INTEGER NOT NULL,
+          context_group_id INTEGER NOT NULL,
+          PRIMARY KEY (content_tag_id, context_group_id),
+          FOREIGN KEY (content_tag_id) REFERENCES content_tags(id),
+          FOREIGN KEY (context_group_id) REFERENCES context_groups(id)
+        );
+      `);
+    },
+  },
 ];
 
 function getSchemaVersion(db: Database.Database): number {

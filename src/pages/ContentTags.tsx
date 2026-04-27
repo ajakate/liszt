@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ContentTag } from '../types';
+import { ContentTag, ContextGroup } from '../types';
 
 export default function ContentTags() {
   const [tags, setTags] = useState<ContentTag[]>([]);
@@ -8,9 +8,14 @@ export default function ContentTags() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [contextGroups, setContextGroups] = useState<ContextGroup[]>([]);
+  const [tagGroupMap, setTagGroupMap] = useState<Record<number, number[]>>({});
+  const [newGroups, setNewGroups] = useState<Set<number>>(new Set());
+  const [filterGroup, setFilterGroup] = useState<number | null>(null);
 
   useEffect(() => {
     loadTags();
+    loadContextGroups();
   }, []);
 
   async function loadTags() {
@@ -18,12 +23,41 @@ export default function ContentTags() {
     setTags(result);
   }
 
+  async function loadContextGroups() {
+    const [groups, allAssignments] = await Promise.all([
+      window.api.getContextGroups(),
+      window.api.getAllContentTagContextGroups(),
+    ]);
+    setContextGroups(groups);
+    const map: Record<number, number[]> = {};
+    for (const a of allAssignments) {
+      if (!map[a.content_tag_id]) map[a.content_tag_id] = [];
+      map[a.content_tag_id].push(a.id);
+    }
+    setTagGroupMap(map);
+  }
+
+  async function toggleGroup(contentTagId: number, groupId: number) {
+    const assigned = tagGroupMap[contentTagId]?.includes(groupId);
+    if (assigned) {
+      await window.api.removeContextGroupToContentTag(contentTagId, groupId);
+    } else {
+      await window.api.addContextGroupToContentTag(contentTagId, groupId);
+    }
+    await loadContextGroups();
+  }
+
   async function handleAdd() {
     if (!newName.trim() || !newDesc.trim()) return;
-    await window.api.createContentTag(newName, newDesc);
+    const id = await window.api.createContentTag(newName, newDesc);
+    for (const groupId of newGroups) {
+      await window.api.addContextGroupToContentTag(id, groupId);
+    }
     setNewName('');
     setNewDesc('');
+    setNewGroups(new Set());
     await loadTags();
+    await loadContextGroups();
   }
 
   async function handleDelete(id: number) {
@@ -73,10 +107,55 @@ export default function ContentTags() {
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
           />
         </div>
+        {contextGroups.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ color: '#888', fontSize: 13 }}>Groups:</span>
+            {contextGroups.map(g => {
+              const active = newGroups.has(g.id);
+              return (
+                <button
+                  key={g.id}
+                  className={`tag-btn ${active ? 'tag-active' : ''}`}
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  onClick={() => {
+                    const next = new Set(newGroups);
+                    if (active) next.delete(g.id); else next.add(g.id);
+                    setNewGroups(next);
+                  }}
+                >
+                  {g.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <button onClick={handleAdd} disabled={!newName.trim() || !newDesc.trim()}>
           Add Tag
         </button>
       </div>
+
+      {contextGroups.length > 0 && tags.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: '#888', fontSize: 13 }}>Filter:</span>
+          <button
+            className={`tag-btn ${filterGroup === null ? 'tag-active' : ''}`}
+            style={{ fontSize: 11, padding: '2px 8px' }}
+            onClick={() => setFilterGroup(null)}
+          >
+            All
+          </button>
+          {contextGroups.map(g => (
+            <button
+              key={g.id}
+              className={`tag-btn ${filterGroup === g.id ? 'tag-active' : ''}`}
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setFilterGroup(filterGroup === g.id ? null : g.id)}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tags.length === 0 ? (
         <div className="empty-state">
@@ -84,7 +163,7 @@ export default function ContentTags() {
         </div>
       ) : (
         <div>
-          {tags.map(tag => (
+          {tags.filter(tag => filterGroup === null || tagGroupMap[tag.id]?.includes(filterGroup)).map(tag => (
             <div key={tag.id} className="card" style={{ marginBottom: 8 }}>
               {editingId === tag.id ? (
                 <>
@@ -109,15 +188,34 @@ export default function ContentTags() {
                   </div>
                 </>
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{tag.name}</div>
-                    <div style={{ color: '#888', fontSize: 13, marginTop: 4 }}>{tag.description}</div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{tag.name}</div>
+                      <div style={{ color: '#888', fontSize: 13, marginTop: 4 }}>{tag.description}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 16 }}>
+                      <button className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => startEdit(tag)}>Edit</button>
+                      <button className="danger" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => handleDelete(tag.id)}>Delete</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 16 }}>
-                    <button className="secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => startEdit(tag)}>Edit</button>
-                    <button className="danger" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => handleDelete(tag.id)}>Delete</button>
-                  </div>
+                  {contextGroups.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+                      {contextGroups.map(g => {
+                        const active = tagGroupMap[tag.id]?.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            className={`tag-btn ${active ? 'tag-active' : ''}`}
+                            style={{ fontSize: 11, padding: '2px 8px' }}
+                            onClick={() => toggleGroup(tag.id, g.id)}
+                          >
+                            {g.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

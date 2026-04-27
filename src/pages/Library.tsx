@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book, Tag } from '../types';
+import { Book, Tag, ContextGroup } from '../types';
 
-type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'created_at';
+type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'context_groups' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 function formatPageCount(wordCount: number): string {
@@ -25,6 +25,9 @@ export default function Library() {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookTags, setBookTags] = useState<Record<number, { id: number; name: string }[]>>({});
   const [allTagsList, setAllTagsList] = useState<Tag[]>([]);
+  const [bookContextGroups, setBookContextGroups] = useState<Record<number, { id: number; name: string }[]>>({});
+  const [allContextGroups, setAllContextGroups] = useState<ContextGroup[]>([]);
+  const [filterContextGroups, setFilterContextGroups] = useState<Set<string>>(() => new Set(loadFilter<string[]>('filterContextGroups', [])));
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>(() => loadFilter('sortKey', 'created_at'));
   const [sortDir, setSortDir] = useState<SortDir>(() => loadFilter('sortDir', 'desc'));
@@ -38,19 +41,23 @@ export default function Library() {
   useEffect(() => { saveFilter('filterTags', Array.from(filterTags)); }, [filterTags]);
   useEffect(() => { saveFilter('statusFilter', statusFilter); }, [statusFilter]);
   useEffect(() => { saveFilter('search', search); }, [search]);
+  useEffect(() => { saveFilter('filterContextGroups', Array.from(filterContextGroups)); }, [filterContextGroups]);
 
   useEffect(() => {
     loadBooks();
   }, []);
 
   async function loadBooks() {
-    const [result, allBookTags, tags] = await Promise.all([
+    const [result, allBookTags, tags, allBookCGs, cGroups] = await Promise.all([
       window.api.getBooks(),
       window.api.getAllBookTags(),
       window.api.getTags(),
+      window.api.getAllBookContextGroups(),
+      window.api.getContextGroups(),
     ]);
     setBooks(result);
     setAllTagsList(tags);
+    setAllContextGroups(cGroups);
 
     const tagMap: Record<number, { id: number; name: string }[]> = {};
     for (const bt of allBookTags) {
@@ -58,6 +65,13 @@ export default function Library() {
       tagMap[bt.book_id].push({ id: bt.id, name: bt.name });
     }
     setBookTags(tagMap);
+
+    const cgMap: Record<number, { id: number; name: string }[]> = {};
+    for (const bcg of allBookCGs) {
+      if (!cgMap[bcg.book_id]) cgMap[bcg.book_id] = [];
+      cgMap[bcg.book_id].push({ id: bcg.id, name: bcg.name });
+    }
+    setBookContextGroups(cgMap);
   }
 
   async function handleImport() {
@@ -83,6 +97,17 @@ export default function Library() {
     setBookTags(prev => ({ ...prev, [bookId]: updated }));
   }
 
+  async function toggleBookContextGroup(bookId: number, groupId: number) {
+    const hasGroup = bookContextGroups[bookId]?.some(g => g.id === groupId);
+    if (hasGroup) {
+      await window.api.removeContextGroupFromBook(bookId, groupId);
+    } else {
+      await window.api.addContextGroupToBook(bookId, groupId);
+    }
+    const updated = await window.api.getBookContextGroups(bookId);
+    setBookContextGroups(prev => ({ ...prev, [bookId]: updated }));
+  }
+
   const stats = useMemo(() => {
     const total = books.length;
     const dnf = books.filter(b => b.rating === 0).length;
@@ -99,6 +124,14 @@ export default function Library() {
     }
     return Array.from(tagSet).sort();
   }, [bookTags]);
+
+  const allContextGroupNames = useMemo(() => {
+    const nameSet = new Set<string>();
+    for (const groups of Object.values(bookContextGroups)) {
+      for (const g of groups) nameSet.add(g.name);
+    }
+    return Array.from(nameSet).sort();
+  }, [bookContextGroups]);
 
   const filteredAndSorted = useMemo(() => {
     let filtered = books;
@@ -127,6 +160,11 @@ export default function Library() {
       filtered = filtered.filter(b => bookTags[b.id]?.some(t => filterTags.has(t.name)));
     }
 
+    // Filter by context groups
+    if (filterContextGroups.size > 0) {
+      filtered = filtered.filter(b => bookContextGroups[b.id]?.some(g => filterContextGroups.has(g.name)));
+    }
+
     // Sort
     const sorted = [...filtered].sort((a, b) => {
       let cmp = 0;
@@ -152,6 +190,12 @@ export default function Library() {
           cmp = ta.localeCompare(tb);
           break;
         }
+        case 'context_groups': {
+          const ga = bookContextGroups[a.id]?.map(g => g.name).join(', ') || '';
+          const gb = bookContextGroups[b.id]?.map(g => g.name).join(', ') || '';
+          cmp = ga.localeCompare(gb);
+          break;
+        }
         case 'created_at':
           cmp = (a.created_at || '').localeCompare(b.created_at || '');
           break;
@@ -160,14 +204,15 @@ export default function Library() {
     });
 
     return sorted;
-  }, [books, bookTags, sortKey, sortDir, filterTags, statusFilter, search]);
+  }, [books, bookTags, bookContextGroups, sortKey, sortDir, filterTags, filterContextGroups, statusFilter, search]);
 
-  const hasActiveFilters = search !== '' || statusFilter !== 'all' || filterTags.size > 0 || sortKey !== 'created_at' || sortDir !== 'desc';
+  const hasActiveFilters = search !== '' || statusFilter !== 'all' || filterTags.size > 0 || filterContextGroups.size > 0 || sortKey !== 'created_at' || sortDir !== 'desc';
 
   function resetFilters() {
     setSearch('');
     setStatusFilter('all');
     setFilterTags(new Set());
+    setFilterContextGroups(new Set());
     setSortKey('created_at');
     setSortDir('desc');
   }
@@ -243,6 +288,25 @@ export default function Library() {
               ))}
             </div>
 
+            {allContextGroupNames.length > 0 && (
+              <div className="tag-filter">
+                {allContextGroupNames.map(name => (
+                  <button
+                    key={name}
+                    className={`tag-btn${filterContextGroups.has(name) ? ' tag-active' : ''}`}
+                    onClick={() => {
+                      const next = new Set(filterContextGroups);
+                      if (next.has(name)) next.delete(name);
+                      else next.add(name);
+                      setFilterContextGroups(next);
+                    }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {hasActiveFilters && (
               <button className="secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={resetFilters}>
                 Clear filters
@@ -258,6 +322,7 @@ export default function Library() {
                 <th onClick={() => handleSort('rating')}>Rating{sortIndicator('rating')}</th>
                 <th onClick={() => handleSort('word_count')}>Words{sortIndicator('word_count')}</th>
                 <th onClick={() => handleSort('tags')}>Tags{sortIndicator('tags')}</th>
+                <th onClick={() => handleSort('context_groups')}>Context{sortIndicator('context_groups')}</th>
                 <th onClick={() => handleSort('created_at')}>Added{sortIndicator('created_at')}</th>
               </tr>
             </thead>
@@ -290,6 +355,23 @@ export default function Library() {
                             onClick={() => toggleBookTag(book.id, tag.id)}
                           >
                             {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {allContextGroups.map(group => {
+                        const active = bookContextGroups[book.id]?.some(g => g.id === group.id);
+                        return (
+                          <button
+                            key={group.id}
+                            className={`tag-btn${active ? ' tag-active' : ''}`}
+                            style={{ padding: '1px 8px', fontSize: 11 }}
+                            onClick={() => toggleBookContextGroup(book.id, group.id)}
+                          >
+                            {group.name}
                           </button>
                         );
                       })}

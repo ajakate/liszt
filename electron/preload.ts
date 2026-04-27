@@ -57,6 +57,20 @@ contextBridge.exposeInMainWorld('api', {
   deleteContentTag: (id: number) => ipcRenderer.invoke('contentTags:delete', id),
   getContentScores: (bookId: number) => ipcRenderer.invoke('contentScores:getForBook', bookId),
 
+  // Context groups
+  getContextGroups: () => ipcRenderer.invoke('contextGroups:getAll'),
+  createContextGroup: (name: string) => ipcRenderer.invoke('contextGroups:create', name),
+  updateContextGroup: (id: number, name: string) => ipcRenderer.invoke('contextGroups:update', id, name),
+  deleteContextGroup: (id: number) => ipcRenderer.invoke('contextGroups:delete', id),
+  getBookContextGroups: (bookId: number) => ipcRenderer.invoke('contextGroups:getForBook', bookId),
+  addContextGroupToBook: (bookId: number, groupId: number) => ipcRenderer.invoke('contextGroups:addToBook', bookId, groupId),
+  removeContextGroupFromBook: (bookId: number, groupId: number) => ipcRenderer.invoke('contextGroups:removeFromBook', bookId, groupId),
+  getAllBookContextGroups: () => ipcRenderer.invoke('contextGroups:getAllBookGroups'),
+  getContentTagContextGroups: (contentTagId: number) => ipcRenderer.invoke('contextGroups:getForContentTag', contentTagId),
+  addContextGroupToContentTag: (contentTagId: number, groupId: number) => ipcRenderer.invoke('contextGroups:addToContentTag', contentTagId, groupId),
+  removeContextGroupToContentTag: (contentTagId: number, groupId: number) => ipcRenderer.invoke('contextGroups:removeFromContentTag', contentTagId, groupId),
+  getAllContentTagContextGroups: () => ipcRenderer.invoke('contextGroups:getAllContentTagGroups'),
+
   // Database
   exportDb: () => ipcRenderer.invoke('db:export'),
   importDb: () => ipcRenderer.invoke('db:import'),

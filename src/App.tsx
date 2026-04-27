@@ -6,6 +6,7 @@ import Preferences from './pages/Preferences';
 import Tags from './pages/Tags';
 import Compare from './pages/Compare';
 import ContentTags from './pages/ContentTags';
+import ContextGroups from './pages/ContextGroups';
 import Settings from './pages/Settings';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <NavLink to="/preferences">Preferences</NavLink>
           <NavLink to="/tags">Tags</NavLink>
           <NavLink to="/content-tags">Content Fingerprint</NavLink>
+          <NavLink to="/context-groups">Context Groups</NavLink>
           <NavLink to="/compare">Compare Styles</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
@@ -35,6 +37,7 @@ function App() {
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/tags" element={<Tags />} />
             <Route path="/content-tags" element={<ContentTags />} />
+            <Route path="/context-groups" element={<ContextGroups />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

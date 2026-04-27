@@ -202,6 +202,7 @@ function registerIpcHandlers() {
     db.prepare('DELETE FROM book_features WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM book_char_ngrams WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM book_tags WHERE book_id = ?').run(id);
+    db.prepare('DELETE FROM book_context_groups WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM content_scores WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM usage_log WHERE book_id = ?').run(id);
     db.prepare('DELETE FROM analysis_results WHERE book_id = ?').run(id);
@@ -245,8 +246,20 @@ function registerIpcHandlers() {
       bookId, 'analysis', usage.model, usage.input_tokens, usage.output_tokens, usage.cost
     );
 
-    // Also score content tags if any exist
-    const contentTags = db.prepare('SELECT * FROM content_tags').all() as { id: number; name: string; description: string }[];
+    // Score content tags scoped by the book's context groups
+    const bookGroupIds = (db.prepare(
+      'SELECT context_group_id FROM book_context_groups WHERE book_id = ?'
+    ).all(bookId) as { context_group_id: number }[]).map(r => r.context_group_id);
+
+    let contentTags: { id: number; name: string; description: string }[] = [];
+    if (bookGroupIds.length > 0) {
+      contentTags = db.prepare(
+        `SELECT DISTINCT ct.* FROM content_tags ct
+         JOIN content_tag_context_groups ctcg ON ct.id = ctcg.content_tag_id
+         WHERE ctcg.context_group_id IN (${bookGroupIds.map(() => '?').join(',')})`
+      ).all(...bookGroupIds) as { id: number; name: string; description: string }[];
+    }
+
     let contentUsage = null;
     if (contentTags.length > 0) {
       const { scores, usage: cUsage } = await scoreContentTags(apiKey, model, book.title, book.author, book.text_content, contentTags);
@@ -387,6 +400,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('contentTags:delete', (_event, id: number) => {
     db.prepare('DELETE FROM content_scores WHERE tag_id = ?').run(id);
+    db.prepare('DELETE FROM content_tag_context_groups WHERE content_tag_id = ?').run(id);
     db.prepare('DELETE FROM content_tags WHERE id = ?').run(id);
   });
 
@@ -394,6 +408,66 @@ function registerIpcHandlers() {
     return db.prepare(
       'SELECT cs.score, cs.explanation, ct.id as tag_id, ct.name, ct.description FROM content_scores cs JOIN content_tags ct ON cs.tag_id = ct.id WHERE cs.book_id = ? ORDER BY ct.name'
     ).all(bookId);
+  });
+
+  // Context groups
+  ipcMain.handle('contextGroups:getAll', () => {
+    return db.prepare('SELECT * FROM context_groups ORDER BY name').all();
+  });
+
+  ipcMain.handle('contextGroups:create', (_event, name: string) => {
+    const result = db.prepare('INSERT INTO context_groups (name) VALUES (?)').run(name.trim());
+    return result.lastInsertRowid;
+  });
+
+  ipcMain.handle('contextGroups:update', (_event, id: number, name: string) => {
+    db.prepare('UPDATE context_groups SET name = ? WHERE id = ?').run(name.trim(), id);
+  });
+
+  ipcMain.handle('contextGroups:delete', (_event, id: number) => {
+    db.prepare('DELETE FROM book_context_groups WHERE context_group_id = ?').run(id);
+    db.prepare('DELETE FROM content_tag_context_groups WHERE context_group_id = ?').run(id);
+    db.prepare('DELETE FROM context_groups WHERE id = ?').run(id);
+  });
+
+  ipcMain.handle('contextGroups:getForBook', (_event, bookId: number) => {
+    return db.prepare(
+      'SELECT cg.* FROM context_groups cg JOIN book_context_groups bcg ON cg.id = bcg.context_group_id WHERE bcg.book_id = ? ORDER BY cg.name'
+    ).all(bookId);
+  });
+
+  ipcMain.handle('contextGroups:addToBook', (_event, bookId: number, groupId: number) => {
+    db.prepare('INSERT OR IGNORE INTO book_context_groups (book_id, context_group_id) VALUES (?, ?)').run(bookId, groupId);
+  });
+
+  ipcMain.handle('contextGroups:removeFromBook', (_event, bookId: number, groupId: number) => {
+    db.prepare('DELETE FROM book_context_groups WHERE book_id = ? AND context_group_id = ?').run(bookId, groupId);
+  });
+
+  ipcMain.handle('contextGroups:getForContentTag', (_event, contentTagId: number) => {
+    return db.prepare(
+      'SELECT cg.* FROM context_groups cg JOIN content_tag_context_groups ctcg ON cg.id = ctcg.context_group_id WHERE ctcg.content_tag_id = ? ORDER BY cg.name'
+    ).all(contentTagId);
+  });
+
+  ipcMain.handle('contextGroups:addToContentTag', (_event, contentTagId: number, groupId: number) => {
+    db.prepare('INSERT OR IGNORE INTO content_tag_context_groups (content_tag_id, context_group_id) VALUES (?, ?)').run(contentTagId, groupId);
+  });
+
+  ipcMain.handle('contextGroups:removeFromContentTag', (_event, contentTagId: number, groupId: number) => {
+    db.prepare('DELETE FROM content_tag_context_groups WHERE content_tag_id = ? AND context_group_id = ?').run(contentTagId, groupId);
+  });
+
+  ipcMain.handle('contextGroups:getAllBookGroups', () => {
+    return db.prepare(
+      'SELECT bcg.book_id, cg.id, cg.name FROM book_context_groups bcg JOIN context_groups cg ON bcg.context_group_id = cg.id ORDER BY cg.name'
+    ).all();
+  });
+
+  ipcMain.handle('contextGroups:getAllContentTagGroups', () => {
+    return db.prepare(
+      'SELECT ctcg.content_tag_id, cg.id, cg.name FROM content_tag_context_groups ctcg JOIN context_groups cg ON ctcg.context_group_id = cg.id ORDER BY cg.name'
+    ).all();
   });
 
   // Database export/import

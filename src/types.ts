@@ -79,6 +79,12 @@ export interface Tag {
   created_at: string;
 }
 
+export interface ContextGroup {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface ModelOption {
   id: string;
   name: string;
@@ -125,6 +131,20 @@ declare global {
       addTagToBook: (bookId: number, tagId: number) => Promise<void>;
       removeTagFromBook: (bookId: number, tagId: number) => Promise<void>;
       getAllBookTags: () => Promise<{ book_id: number; id: number; name: string }[]>;
+      // Context groups
+      getContextGroups: () => Promise<ContextGroup[]>;
+      createContextGroup: (name: string) => Promise<number>;
+      updateContextGroup: (id: number, name: string) => Promise<void>;
+      deleteContextGroup: (id: number) => Promise<void>;
+      getBookContextGroups: (bookId: number) => Promise<ContextGroup[]>;
+      addContextGroupToBook: (bookId: number, groupId: number) => Promise<void>;
+      removeContextGroupFromBook: (bookId: number, groupId: number) => Promise<void>;
+      getAllBookContextGroups: () => Promise<{ book_id: number; id: number; name: string }[]>;
+      getContentTagContextGroups: (contentTagId: number) => Promise<ContextGroup[]>;
+      addContextGroupToContentTag: (contentTagId: number, groupId: number) => Promise<void>;
+      removeContextGroupToContentTag: (contentTagId: number, groupId: number) => Promise<void>;
+      getAllContentTagContextGroups: () => Promise<{ content_tag_id: number; id: number; name: string }[]>;
+
       exportDb: () => Promise<boolean>;
       importDb: () => Promise<boolean>;
       isDev: () => Promise<boolean>;

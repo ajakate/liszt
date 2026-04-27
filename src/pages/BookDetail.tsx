@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Book, AnalysisResult, StyleProfile, StyleMatch, ContentScore, UsageInfo, Tag, FeatureEntry } from '../types';
+import { Book, AnalysisResult, StyleProfile, StyleMatch, ContentScore, UsageInfo, Tag, ContextGroup, FeatureEntry } from '../types';
 import StyleBars from '../components/StyleBars';
 
 function formatCost(cost: number): string {
@@ -30,6 +30,8 @@ export default function BookDetail() {
   const [bookTags, setBookTags] = useState<Tag[]>([]);
   const [styleMatches, setStyleMatches] = useState<StyleMatch[]>([]);
   const [contentScores, setContentScores] = useState<ContentScore[]>([]);
+  const [allContextGroups, setAllContextGroups] = useState<ContextGroup[]>([]);
+  const [bookContextGroups, setBookContextGroups] = useState<ContextGroup[]>([]);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editAuthor, setEditAuthor] = useState('');
@@ -39,7 +41,7 @@ export default function BookDetail() {
   }, [bookId]);
 
   async function loadData() {
-    const [bookData, analysisData, styleData, estimate, tags, bTags, registry, matches, scores] = await Promise.all([
+    const [bookData, analysisData, styleData, estimate, tags, bTags, registry, matches, scores, cGroups, bGroups] = await Promise.all([
       window.api.getBook(bookId),
       window.api.getAnalysisResults(bookId),
       window.api.getStyleProfile(bookId),
@@ -49,6 +51,8 @@ export default function BookDetail() {
       window.api.getFeatureRegistry(),
       window.api.getTopStyleMatches(bookId),
       window.api.getContentScores(bookId),
+      window.api.getContextGroups(),
+      window.api.getBookContextGroups(bookId),
     ]);
     setBook(bookData);
     setResults(analysisData);
@@ -59,6 +63,8 @@ export default function BookDetail() {
     setFeatureRegistry(registry);
     setStyleMatches(matches);
     setContentScores(scores);
+    setAllContextGroups(cGroups);
+    setBookContextGroups(bGroups);
   }
 
   async function toggleTag(tagId: number) {
@@ -70,6 +76,17 @@ export default function BookDetail() {
     }
     const updated = await window.api.getBookTags(bookId);
     setBookTags(updated);
+  }
+
+  async function toggleContextGroup(groupId: number) {
+    const hasGroup = bookContextGroups.some((g) => g.id === groupId);
+    if (hasGroup) {
+      await window.api.removeContextGroupFromBook(bookId, groupId);
+    } else {
+      await window.api.addContextGroupToBook(bookId, groupId);
+    }
+    const updated = await window.api.getBookContextGroups(bookId);
+    setBookContextGroups(updated);
   }
 
   async function handleAnalyze() {
@@ -180,6 +197,24 @@ export default function BookDetail() {
                 onClick={() => toggleTag(tag.id)}
               >
                 {tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {allContextGroups.length > 0 && (
+        <div className="tag-row">
+          <span className="rating-label">Context:</span>
+          {allContextGroups.map((group) => {
+            const active = bookContextGroups.some((g) => g.id === group.id);
+            return (
+              <button
+                key={group.id}
+                className={`tag-btn ${active ? 'tag-active' : ''}`}
+                onClick={() => toggleContextGroup(group.id)}
+              >
+                {group.name}
               </button>
             );
           })}
