@@ -377,8 +377,13 @@ function registerIpcHandlers() {
     ).all(bookId) as { id: number; title: string; author: string; rating: number | null }[];
 
     const scored = otherBooks.map(book => {
-      const sim = computeSimilarity(db, bookId, book.id);
-      return { book_id: book.id, title: book.title, author: book.author, rating: book.rating, similarity: sim.overall };
+      const styleSim = computeSimilarity(db, bookId, book.id);
+      const contentSim = computeContentSimilarity(db, bookId, book.id);
+      // Blend: if content scores exist for both, use 60% style + 40% content; otherwise style only
+      const overall = contentSim !== null
+        ? 0.6 * styleSim.overall + 0.4 * contentSim
+        : styleSim.overall;
+      return { book_id: book.id, title: book.title, author: book.author, rating: book.rating, similarity: overall };
     });
 
     scored.sort((a, b) => b.similarity - a.similarity);
@@ -571,6 +576,31 @@ function registerIpcHandlers() {
     app.exit(0);
     return true;
   });
+}
+
+// Helper: compute content fingerprint similarity between two books
+function computeContentSimilarity(db: ReturnType<typeof getDatabase>, bookIdA: number, bookIdB: number): number | null {
+  const scoresA = db.prepare('SELECT tag_id, score FROM content_scores WHERE book_id = ?').all(bookIdA) as { tag_id: number; score: number }[];
+  const scoresB = db.prepare('SELECT tag_id, score FROM content_scores WHERE book_id = ?').all(bookIdB) as { tag_id: number; score: number }[];
+
+  if (scoresA.length === 0 || scoresB.length === 0) return null;
+
+  const mapA: Record<number, number> = {};
+  for (const s of scoresA) mapA[s.tag_id] = s.score;
+  const mapB: Record<number, number> = {};
+  for (const s of scoresB) mapB[s.tag_id] = s.score;
+
+  const sharedIds = Object.keys(mapA).filter(id => id in mapB).map(Number);
+  if (sharedIds.length === 0) return null;
+
+  let dot = 0, normA = 0, normB = 0;
+  for (const id of sharedIds) {
+    dot += mapA[id] * mapB[id];
+    normA += mapA[id] * mapA[id];
+    normB += mapB[id] * mapB[id];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 // Helper to build style profile data from new tables

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { StyleProfile, StyleComparison, FeatureEntry } from '../types';
+import { useState, useEffect, useMemo } from 'react';
+import { StyleProfile, StyleComparison, FeatureEntry, ContentScore } from '../types';
 import StyleBars from '../components/StyleBars';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -20,6 +20,8 @@ export default function Compare() {
   const [focusB, setFocusB] = useState(false);
   const [comparison, setComparison] = useState<StyleComparison | null>(null);
   const [registry, setRegistry] = useState<FeatureEntry[]>([]);
+  const [contentScoresA, setContentScoresA] = useState<ContentScore[]>([]);
+  const [contentScoresB, setContentScoresB] = useState<ContentScore[]>([]);
   const [showExplainer, setShowExplainer] = useState(false);
 
   useEffect(() => {
@@ -37,8 +39,17 @@ export default function Compare() {
       window.api.compareStyles(selectedA, selectedB)
         .then(setComparison)
         .catch(console.error);
+      Promise.all([
+        window.api.getContentScores(selectedA),
+        window.api.getContentScores(selectedB),
+      ]).then(([a, b]) => {
+        setContentScoresA(a);
+        setContentScoresB(b);
+      });
     } else {
       setComparison(null);
+      setContentScoresA([]);
+      setContentScoresB([]);
     }
   }, [selectedA, selectedB]);
 
@@ -64,6 +75,41 @@ export default function Compare() {
 
   const profileA = profiles.find((p) => p.book_id === selectedA);
   const profileB = profiles.find((p) => p.book_id === selectedB);
+
+  const contentComparison = useMemo(() => {
+    if (contentScoresA.length === 0 || contentScoresB.length === 0) return null;
+
+    // Build maps by tag_id
+    const mapA: Record<number, ContentScore> = {};
+    for (const s of contentScoresA) mapA[s.tag_id] = s;
+    const mapB: Record<number, ContentScore> = {};
+    for (const s of contentScoresB) mapB[s.tag_id] = s;
+
+    // Shared tags
+    const sharedIds = Object.keys(mapA).filter(id => id in mapB).map(Number);
+    if (sharedIds.length === 0) return null;
+
+    // Cosine similarity on scores
+    let dot = 0, normA = 0, normB = 0;
+    for (const id of sharedIds) {
+      const a = mapA[id].score;
+      const b = mapB[id].score;
+      dot += a * b;
+      normA += a * a;
+      normB += b * b;
+    }
+    const similarity = normA === 0 || normB === 0 ? 0 : dot / (Math.sqrt(normA) * Math.sqrt(normB));
+
+    // Per-tag comparison
+    const tags = sharedIds.map(id => ({
+      name: mapA[id].name,
+      scoreA: mapA[id].score,
+      scoreB: mapB[id].score,
+      diff: Math.abs(mapA[id].score - mapB[id].score),
+    })).sort((a, b) => a.diff - b.diff);
+
+    return { similarity, tags };
+  }, [contentScoresA, contentScoresB]);
 
   return (
     <div>
@@ -150,6 +196,50 @@ export default function Compare() {
                       <div className="bar-fill" style={{ width: `${Math.max(0, score * 100)}%` }} />
                     </div>
                     <span className="category-sim-value">{Math.round(score * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {contentComparison && (
+            <>
+              <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div className="similarity-score">{Math.round(contentComparison.similarity * 100)}%</div>
+                <div className="similarity-label">Content Similarity</div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ marginBottom: 12 }}>Content Fingerprint Comparison</h3>
+                {contentComparison.tags.map(t => (
+                  <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ width: 180, fontSize: 13, color: '#a0a0b8', textAlign: 'right', flexShrink: 0 }}>{t.name}</span>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 30, textAlign: 'right', fontSize: 12, color: '#e94560' }}>{t.scoreA}</span>
+                      <div style={{ flex: 1, height: 8, background: '#0f3460', borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          height: '100%',
+                          width: `${t.scoreA * 10}%`,
+                          background: '#e94560',
+                          opacity: 0.6,
+                          borderRadius: 4,
+                        }} />
+                        <div style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          height: '100%',
+                          width: `${t.scoreB * 10}%`,
+                          background: '#4ecdc4',
+                          opacity: 0.6,
+                          borderRadius: 4,
+                        }} />
+                      </div>
+                      <span style={{ width: 30, fontSize: 12, color: '#4ecdc4' }}>{t.scoreB}</span>
+                    </div>
                   </div>
                 ))}
               </div>
