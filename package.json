@@ -16,7 +16,8 @@
     "compromise": "^14.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.1.0"
+    "react-router-dom": "^7.1.0",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",

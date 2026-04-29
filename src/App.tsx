@@ -7,6 +7,7 @@ import Tags from './pages/Tags';
 import Compare from './pages/Compare';
 import ContentTags from './pages/ContentTags';
 import ContextGroups from './pages/ContextGroups';
+import Metrics from './pages/Metrics';
 import Settings from './pages/Settings';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <NavLink to="/content-tags">Content Fingerprint</NavLink>
           <NavLink to="/context-groups">Context Groups</NavLink>
           <NavLink to="/compare">Compare Styles</NavLink>
+          <NavLink to="/metrics">Metrics</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <main className="content">
@@ -39,6 +41,7 @@ function App() {
             <Route path="/content-tags" element={<ContentTags />} />
             <Route path="/context-groups" element={<ContextGroups />} />
             <Route path="/compare" element={<Compare />} />
+            <Route path="/metrics" element={<Metrics />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
