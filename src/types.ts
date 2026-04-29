@@ -6,6 +6,7 @@ export interface Book {
   text_preview: string;
   word_count: number;
   rating: number | null;
+  date_read: string | null;
   created_at: string;
 }
 
@@ -108,6 +109,7 @@ declare global {
       deleteBook: (id: number) => Promise<void>;
       setRating: (id: number, rating: number | null) => Promise<void>;
       updateBookMeta: (id: number, title: string, author: string) => Promise<void>;
+      setDateRead: (id: number, dateRead: string | null) => Promise<void>;
       runAnalysis: (bookId: number) => Promise<{ results: AnalysisResult[]; usage: UsageInfo }>;
       getAnalysisResults: (bookId: number) => Promise<AnalysisResult[]>;
       generateStyleProfile: (bookId: number) => Promise<StyleProfile>;

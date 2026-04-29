@@ -185,6 +185,40 @@ export default function BookDetail() {
         ))}
       </div>
 
+      <div className="tag-row">
+        <span className="rating-label">Date read:</span>
+        <input
+          type="date"
+          value={book.date_read || ''}
+          onChange={async (e) => {
+            const val = e.target.value || null;
+            await window.api.setDateRead(bookId, val);
+            setBook(prev => prev ? { ...prev, date_read: val } : prev);
+          }}
+          style={{
+            background: '#16213e',
+            border: '1px solid #0f3460',
+            color: '#e0e0e0',
+            padding: '4px 8px',
+            borderRadius: 6,
+            fontSize: 13,
+            width: 'auto',
+          }}
+        />
+        {book.date_read && (
+          <button
+            className="secondary"
+            style={{ padding: '2px 8px', fontSize: 11 }}
+            onClick={async () => {
+              await window.api.setDateRead(bookId, null);
+              setBook(prev => prev ? { ...prev, date_read: null } : prev);
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {allTags.length > 0 && (
         <div className="tag-row">
           <span className="rating-label">Tags:</span>

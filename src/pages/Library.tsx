@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Book, Tag, ContextGroup } from '../types';
 
-type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'context_groups' | 'created_at';
+type SortKey = 'title' | 'author' | 'rating' | 'word_count' | 'tags' | 'context_groups' | 'date_read' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 function formatPageCount(wordCount: number): string {
@@ -196,6 +196,9 @@ export default function Library() {
           cmp = ga.localeCompare(gb);
           break;
         }
+        case 'date_read':
+          cmp = (a.date_read || '').localeCompare(b.date_read || '');
+          break;
         case 'created_at':
           cmp = (a.created_at || '').localeCompare(b.created_at || '');
           break;
@@ -323,6 +326,7 @@ export default function Library() {
                 <th onClick={() => handleSort('word_count')}>Words{sortIndicator('word_count')}</th>
                 <th onClick={() => handleSort('tags')}>Tags{sortIndicator('tags')}</th>
                 <th onClick={() => handleSort('context_groups')}>Context{sortIndicator('context_groups')}</th>
+                <th onClick={() => handleSort('date_read')}>Date Read{sortIndicator('date_read')}</th>
                 <th onClick={() => handleSort('created_at')}>Added{sortIndicator('created_at')}</th>
               </tr>
             </thead>
@@ -376,6 +380,25 @@ export default function Library() {
                         );
                       })}
                     </div>
+                  </td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <input
+                      type="date"
+                      value={book.date_read || ''}
+                      onChange={async (e) => {
+                        const val = e.target.value || null;
+                        await window.api.setDateRead(book.id, val);
+                        setBooks(prev => prev.map(b => b.id === book.id ? { ...b, date_read: val } : b));
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#888',
+                        fontSize: 12,
+                        padding: 0,
+                        width: '100%',
+                      }}
+                    />
                   </td>
                   <td style={{ color: '#888', fontSize: 13 }}>
                     {book.created_at ? new Date(book.created_at).toLocaleDateString() : '—'}

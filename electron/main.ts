@@ -191,11 +191,11 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('books:getAll', () => {
-    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, rating, created_at FROM books ORDER BY created_at DESC').all();
+    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, rating, date_read, created_at FROM books ORDER BY created_at DESC').all();
   });
 
   ipcMain.handle('books:get', (_event, id: number) => {
-    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, rating, created_at FROM books WHERE id = ?').get(id);
+    return db.prepare('SELECT id, title, author, file_path, text_preview, word_count, rating, date_read, created_at FROM books WHERE id = ?').get(id);
   });
 
   ipcMain.handle('books:delete', (_event, id: number) => {
@@ -217,6 +217,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('books:updateMeta', (_event, id: number, title: string, author: string) => {
     db.prepare('UPDATE books SET title = ?, author = ? WHERE id = ?').run(title, author, id);
+  });
+
+  ipcMain.handle('books:setDateRead', (_event, id: number, dateRead: string | null) => {
+    db.prepare('UPDATE books SET date_read = ? WHERE id = ?').run(dateRead, id);
   });
 
   // Analysis

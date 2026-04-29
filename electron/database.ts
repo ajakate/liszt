@@ -233,6 +233,13 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 10,
+    description: 'Add date_read to books',
+    up: (db) => {
+      db.exec('ALTER TABLE books ADD COLUMN date_read TEXT');
+    },
+  },
 ];
 
 function getSchemaVersion(db: Database.Database): number {
