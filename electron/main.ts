@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, nativeImage, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, nativeImage, Menu, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as https from 'https';
 import { initDatabase, getDatabase } from './database';
 import { extractEpubText, extractEpubMetadata } from './epub';
 import { analyzeBook, scoreContentTags, estimateCost, DEFAULT_MODEL, AVAILABLE_MODELS } from './claude';
@@ -64,11 +65,64 @@ app.whenReady().then(() => {
   initDatabase();
   createWindow();
   registerIpcHandlers();
+
+  mainWindow?.webContents.once('did-finish-load', () => {
+    checkForUpdates();
+  });
 });
 
 app.on('window-all-closed', () => {
   app.quit();
 });
+
+function checkForUpdates() {
+  const options = {
+    hostname: 'api.github.com',
+    path: '/repos/ajakate/liszt/releases/latest',
+    headers: { 'User-Agent': 'Liszt-App' },
+  };
+
+  https.get(options, (res) => {
+    let data = '';
+    res.on('data', (chunk: string) => { data += chunk; });
+    res.on('end', () => {
+      try {
+        const release = JSON.parse(data);
+        const latest = (release.tag_name || '').replace(/^v/, '');
+        const current = app.getVersion();
+        if (latest && latest !== current && compareVersions(latest, current) > 0) {
+          dialog.showMessageBox(mainWindow!, {
+            type: 'info',
+            title: 'Update Available',
+            message: `Liszt v${latest} is available`,
+            detail: `You are running v${current}. Would you like to download the update?`,
+            buttons: ['Download', 'Later'],
+            defaultId: 0,
+          }).then(({ response }) => {
+            if (response === 0) {
+              shell.openExternal(release.html_url);
+            }
+          });
+        }
+      } catch {
+        // Silently ignore parse errors
+      }
+    });
+  }).on('error', () => {
+    // Silently ignore network errors
+  });
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na !== nb) return na - nb;
+  }
+  return 0;
+}
 
 // Helper: store computed features for a book
 function storeBookFeatures(db: ReturnType<typeof getDatabase>, bookId: number, text: string) {
